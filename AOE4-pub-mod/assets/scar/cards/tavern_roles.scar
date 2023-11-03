@@ -1,0 +1,98 @@
+-- 角色定义
+
+import("util/common_header.scar")
+
+Core_RegisterModule("TavernRole")
+
+_icon_preffix = "pack://application:,,,/WPFGUI;component/roles/"
+
+_tavern_roles = {
+	{
+		id = "role_1",
+		name = "朱元璋",
+		desc = "测试",
+		icon = _icon_preffix .. "qsh.png",
+	},
+	{
+		id = "role_2",
+		name = "维多利亚",
+		desc = "adsfsdafdsafdsfdsafdsafd",
+		icon = "pack://application:,,,/WPFGUI;component/Images/roles/wdly.png",
+	},
+	{
+		id = "role_3",
+		name = "adf",
+		desc = "fdsf",
+		icon = "pack://application:,,,/aoe-tavern;component/Images/roles/wdly.png",
+	},
+	{
+		id = "role_4",
+		name = "adf",
+		desc = "fdsf",
+		icon = "icons/roles/wdly",
+	},
+	{
+		id = "role_5",
+		name = "adf",
+		desc = "fdsf",
+		icon = "pack://application:,,,/aa0406c7490b4889acebb0e09301e10f;component/Images/roles/wdly.png",
+	},
+	{
+		id = "role_6",
+		name = "adf",
+		desc = "fdsf",
+		icon = "../../icons/roles/wdly.png",
+	} ,
+	{
+		id = "role_7",
+		name = "adf",
+		desc = "fdsf",
+		icon = "../../icons/roles/wdly.png",
+	},
+	{
+		id = "role_8",
+		name = "adf",
+		desc = "fdsf",
+		icon = "../../../icons/roles/wdly.png",
+	},
+	{
+		id = "role_9",
+		name = "adf",
+		desc = "fdsf",
+		icon = "pack://application:,,,/WPFGUI;component/Images/resources/resource_food_icon.png",
+	},
+}
+
+
+-- 获得所有的角色
+function TavernRole_GetAllRoles()
+	return _tavern_roles
+end
+
+-- 根据角色id获取角色信息
+function TavernRole_GetRoleById(id)
+	for i, role in pairs(TavernRole_GetAllRoles()) do 
+		if role.id == id then 
+			return role 
+		end
+	end
+	return nil
+end
+
+
+function TavernRole_OnInit()
+	
+end
+
+function TavernRole_Start()
+	
+	
+end
+
+-- 随机选中一个角色
+function TavernRole_RandSelectOne()
+	local roles = TavernRole_GetAllRoles()
+	local count = #roles
+	local index = World_GetRand(1, count)
+	return roles[index]
+end

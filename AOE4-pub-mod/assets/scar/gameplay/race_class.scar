@@ -1,0 +1,130 @@
+-- Import Utility Scripts
+import("cardinal.scar")							-- Contains sfx references, UI templates, and Civ/Age helper functions
+import("ScarUtil.scar")							-- Contains game helper functions
+import("gameplay/player_mgr.scar")
+
+_tavern_config = {
+	options = {
+		
+	},
+	
+}
+
+Core_RegisterModule("ConfigUtil")
+
+ROUND = 0
+GOLD_LIMIT = 50
+FOOD_LIMIT = 200
+
+RACE_ENG = "english"
+RACE_CHI = "chinese"
+RACE_RUS = "rus"
+RACE_ABB = "abbasid"
+RACE_SUL = "sultanate"
+RACE_FRE = "french"
+RACE_MON = "mongol"
+RACE_HRE = "hre"
+RACE_OTT = "ottoman"
+RACE_MAL = "malian"
+
+_tavern_races = {
+	english = RACE.ENGLISH,
+	chinese = RACE.CHINESE,
+	rus = RACE.CHINESE,
+	abbasid = RACE.ABBASID,
+	sultanate = RACE.SULTANATE,
+	french = RACE.FRENCH,
+	mongol = RACE.MONGOL,
+	hre = RACE.HRE,
+	ottoman = RACE.OTTOMAN,
+	malian = RACE.MALIAN,
+	
+}
+
+function ConfigUtil_GetRaceBP(race)
+	return _tavern_races[race]
+end
+
+function ConfigUtil_OnGameSetup()
+	Setup_GetWinConditionOptions(_tavern_config.options)
+	_tavern_config.enable_auto_combat = _tavern_config.options.common_settings.enable_auto_combat
+	_tavern_config.enable_match_ui = _tavern_config.options.common_settings.enable_match_ui
+	_tavern_config.enable_test_mode = _tavern_config.options.common_settings.enable_test_mode
+
+end
+
+function ConfigUtil_IsEnableMatchUI()
+	return _tavern_config.enable_match_ui
+end
+
+-- 当前是第几轮
+function ConfigUtil_GetCurrentRound()
+	return ROUND
+end
+
+-- 更新轮次信息以及食物和黄金上限
+function ConfigUtil_UpdateRound()
+	ROUND = ROUND + 1
+	FOOD_LIMIT = FOOD_LIMIT + 1
+end
+
+-- 获取食物上限
+function ConfigUtil_GetFoodLimit()
+	return FOOD_LIMIT
+end
+
+-- 获取黄金上限
+function ConfigUtil_GetGoldLimit()
+	return GOLD_LIMIT
+end
+
+-- 单位卡牌价格
+function ConfigUtil_GetSquadCardPrice()
+	return 3
+end
+
+-- 能力卡牌价格
+function ConfigUtil_GetAbilityCardPrice()
+	return 2
+end
+
+function ConfigUtil_GetLevelupGolds()
+	local levelUpGolds = {
+		5, 7, 8, 9, 11
+	}
+	return levelUpGolds
+end
+
+-- 是否需要自动战斗
+function ConfigUtil_IsAutoCombat()
+	return _tavern_config.enable_auto_combat
+end
+
+function ConfigUtil_IsTestMode()
+	return _tavern_config.enable_test_mode
+end
+
+-- 每张单位卡牌最多多少技能
+function ConfigUtil_GetMaxAbilitisInSquadCard()
+	return 10
+end
+
+-- 获取卡牌的等级数量限制
+function ConfigUtil_GetCardLevelCount(level)
+	local map = {
+		6, 6, 5, 5, 4, 4
+	}
+	return map[level]
+end
+
+
+
+race_com = {
+	food_limit=20 , 
+	wood_limit = 20, 
+	gold_limit = 10, 
+	stone_limit = 5, 
+	squard_card_price = 3,
+	ability_card_price = 2, 
+	level_up_price = {5,7,8,9,11,13}
+	}

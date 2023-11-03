@@ -1,0 +1,24 @@
+import("ui/hall_ui.scar")
+
+Core_RegisterModule("TavernAI")
+
+function TavernAI_OnRoundStart()
+	Rule_AddOneShot(TavernAI_AddCard, 3)
+end
+
+function TavernAI_AddCard()
+	for i, player in pairs(PLAYERS) do 
+		if not player.isHuman then 
+			if ConfigUtil_IsTestMode() then 
+				PlayerMgr_LevelUp(player.id)
+			end
+			local squadCards = PlayerCard_GetToBeSelectSquadCards(player.id)
+			if #squadCards >= 2 then 
+				local card = PlayerCard_GetToBeSelectSquadCard(player.id, 2)
+				HallUI_BuySquadCardsNtw(player.id, SquadCards_GetId(card))
+				card = PlayerCard_GetToBeSelectSquadCard(player.id, 1)
+				HallUI_BuySquadCardsNtw(player.id, SquadCards_GetId(card))
+			end
+		end
+	end
+end

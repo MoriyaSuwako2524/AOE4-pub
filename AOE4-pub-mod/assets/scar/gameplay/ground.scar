@@ -1,0 +1,214 @@
+import ("util/common_header.scar")
+
+Core_RegisterModule("Ground")
+
+_ground = {
+	
+}
+
+_radius = 0
+
+function Ground_Start()
+	local radius = 0
+	-- 获取四个中心点
+	for i = 1, 4 do 
+		
+		local centerMarker = Util_DismissErrors(nil, function() return  Marker_FromName("center"..i, "")  end)
+		if centerMarker == nil then 
+			Rule_AddInterval(Ground_Warning, 1)
+			return 
+		end
+	
+		local num1 = ((i-1) * 2 + 1)
+		local num2 = (i * 2)
+	
+		local marker1 =  Marker_FromName("action"..((i-1) * 2 + 1), "")
+		local marker2 =  Marker_FromName("action"..(i * 2), "")
+		--HintPoint_Add(Marker_GetPosition(centerMarker), true, "center"..i, 2, nil, nil, nil, nil, nil)
+		--HintPoint_Add(Marker_GetPosition(marker1), true, "action"..((i-1) * 2 + 1), 2, nil, nil, nil, nil, nil)
+		--HintPoint_Add(Marker_GetPosition(marker2), true, "action"..(i * 2), 2, nil, nil, nil, nil, nil)
+		
+		local dis1 = World_DistancePointToPoint(Marker_GetPosition(marker1), Marker_GetPosition(centerMarker))
+		local dis2 = World_DistancePointToPoint(Marker_GetPosition(marker2), Marker_GetPosition(centerMarker))
+		
+		if dis1 > radius then 
+			radius = dis1	
+		end
+		
+		if dis2 > radius then 
+			radius = dis2
+		end
+		
+		local ground = {
+				center = Marker_GetPosition(centerMarker),
+				pos1 = Marker_GetPosition(marker1),
+				pos2 = Marker_GetPosition(marker2),
+			}
+		for k = num1, num2 do 
+			local spawnPosList = {}
+			for j = 1, 10 do 
+				local p = string.format("pos_%s_%s", k, j)
+				local m = Marker_FromName(p, "")
+				local pos = Marker_GetPosition(m)
+				table.insert(spawnPosList, pos)
+			end
+			if k == num1 then 
+				ground.spawnPosList1 = spawnPosList  
+			else
+				ground.spawnPosList2 = spawnPosList
+			end
+		end
+		
+		table.insert(_ground, ground)
+		
+	end
+	_radius = radius * 1.5
+end
+
+function Ground_Warning()
+	UI_CreateEventCue("请使用配套的tavern map 地图", nil, "", "", "sfx_ui_event_queue_high_priority_play")
+end
+
+-- 获得场地的中心位置
+function Ground_GetCenterPos(groundIdx)
+	if #_ground == 0 then 
+		Rule_AddInterval(Ground_Warning, 1)
+		return 
+	end
+	return _ground[groundIdx].center
+end
+
+-- 获得场地可部署的位置
+function Ground_GetSpawnPos(groundIdx)
+	if #_ground == 0 then 
+		Rule_AddInterval(Ground_Warning, 1)
+		return 
+	end
+	return {_ground[groundIdx].pos1, _ground[groundIdx].pos2}
+end
+
+
+function Ground_GetRadius()
+	return _radius
+end
+
+-- 获取部署位置列表
+function Ground_GetSpawnPosList(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	if player.ground ~= nil then 
+		local ground = _ground[player.ground]
+		if ground.pos1 == player.spawnPos then 
+			return ground.spawnPosList1
+		else 
+			return ground.spawnPosList2
+		end
+	end
+end
+
+-- 获取部署位置序列号
+function Ground_GetSpawnPosSerialNo(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	if player.ground ~= nil then 
+		local ground = _ground[player.ground]
+		if ground.pos1 == player.spawnPos then 
+			return player.ground * 2 - 1
+		else 
+			return player.ground * 2
+		end
+	end
+end
+
+
+_spawn_pos_list = {}
+
+
+function Ground_OnRoundStart()
+	--Ground_ShowSpawnPos()
+end
+
+
+function Ground_OnCombatStart()
+	--Ground_HideSpawnPos()
+end
+
+function Ground_ShowSpawnPos()
+	_spawn_pos_list = {}
+	for _, ground in pairs(_ground) do 
+		for i, pos in pairs(ground.spawnPosList1) do 
+			local id = HintPoint_Add(pos, true,  Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:128", i), 2, nil, nil, nil, nil, nil)
+			table.insert(_spawn_pos_list, id)
+		end
+		for i, pos in pairs(ground.spawnPosList2) do 
+			local id = HintPoint_Add(pos, true,  Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:128", i), 2, nil, nil, nil, nil, nil)
+			table.insert(_spawn_pos_list, id)
+		end
+	end
+end
+
+function Ground_GetAttackedPos2(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	local groundIdx = player.ground
+	if groundIdx ~= nil then 
+		local serialNo = Ground_GetSpawnPosSerialNo(playerId)
+		local marker = Marker_FromName(string.format("attack_%s_%s", serialNo, 2), "")
+		return Marker_GetPosition(marker)
+	end
+	return nil 
+end
+
+
+function Ground_GetAttackedPos(playerId, posIdx)
+	local player = Core_GetPlayersTableEntry(playerId)
+	local groundIdx = player.ground
+	local attackPos = 2
+	if posIdx == 1 or posIdx == 6 then 
+		attackPos = 3
+	elseif posIdx == 5 or posIdx == 10 then 
+		attackPos = 1
+	else
+		
+	end
+	if groundIdx ~= nil then 
+		local serialNo = Ground_GetSpawnPosSerialNo(playerId)
+		local marker = Marker_FromName(string.format("attack_%s_%s", serialNo, attackPos), "")
+		return Marker_GetPosition(marker)
+	end
+	return nil 
+end
+
+function Ground_HideSpawnPos()
+	for _, id in pairs(_spawn_pos_list) do 
+		HintPoint_Remove(id)
+	end
+end
+
+
+function Ground_GetSpawnPosContext(playerId, card, areaType)
+	local player = Core_GetPlayersTableEntry(playerId)
+	local spawnIdx = PlayerCard_GetSquadCardSpawnPosIdx(playerId, card)
+	local context = {}
+	local layer1 = {}
+	local layer2 = {}
+	for i = 1, 5 do 
+		table.insert(layer1, Ground_GetSpawnPosContextEle(i, spawnIdx, areaType))
+		table.insert(layer2, Ground_GetSpawnPosContextEle(i + 5, spawnIdx, areaType))
+	end
+	context.layer1 = layer1
+	context.layer2 = layer2    
+	return context
+end
+
+
+function Ground_GetSpawnPosContextEle(idx, spawnIdx, areaType)
+	return {
+		btnTxt = Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:128", idx),
+		enabled = spawnIdx ~= idx,
+		cmd = UI_CreateCommand("HallUI_DoChangeSpawnPosCmd"),
+		cmdParam = string.format("%s|%s", idx, areaType)
+	}
+end
+
+-- 是否是侧翼位置
+function Ground_IsFlank(spawnPosIdx)
+	return (spawnPosIdx == 1 or spawnPosIdx == 5 or spawnPosIdx == 6 or spawnPosIdx == 10)
+end

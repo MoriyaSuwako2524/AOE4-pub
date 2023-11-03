@@ -1,0 +1,587 @@
+import ("util/common_header.scar")
+
+
+-- 增加血量百分比
+function SGUtil_AddHealthPercent(sg, squadType, factor)
+	local add_func = function(idx, t, sid) 
+		local maxHealth = Squad_GetHealthMax(sid)
+		local health = Squad_GetHealth(sid) + maxHealth * factor
+		if health > maxHealth then 
+			health = maxHealth
+		end
+		if health < 0 then 
+			health  = 0
+			Squad_Kill(sid)
+			return
+		end
+		local healthPercent = health/maxHealth
+		if Squad_IsAlive(sid) then 
+			Squad_SetHealth(sid, healthPercent)
+		end
+	end
+	
+	local tempSG = SGUtil_GetSgBySquadType(sg, squadType)
+	 
+	if tempSG ~= nil and SGroup_Count(tempSG) > 0 then 
+		SGroup_ForEach(tempSG, add_func)
+	end
+end
+
+-- 增加血量
+function SGUtil_AddHealth(sg, squadType, addHealth)
+	local add_func = function(idx, t, sid) 
+		local maxHealth = Squad_GetHealthMax(sid)
+		local health = Squad_GetHealth(sid) + addHealth
+		if health > maxHealth then 
+			health = maxHealth
+		end
+		if health < 0 then 
+			health  = 0
+			Squad_Kill(sid)
+			return
+		end
+		local healthPercent = health/maxHealth
+		if Squad_IsAlive(sid) then 
+			Squad_SetHealth(sid, healthPercent)
+		end
+	end
+	
+	local tempSG = SGUtil_GetSgBySquadType(sg, squadType)
+	
+	if tempSG ~= nil and SGroup_Count(tempSG) > 0 then 
+		SGroup_ForEach(tempSG, add_func)
+	end
+end
+
+-- 增加血量上限
+function SGUtil_ModifyMaxHealth(sg, squadType, factor)
+	local tempSG = SGUtil_GetSgBySquadType(sg, squadType)
+	if tempSG ~= nil and SGroup_Count(tempSG) > 0 then 
+		Modify_EntityMaxHealth(tempSG, 1 + factor, MUT_Multiplication)
+	end
+end
+
+-- 增加防御
+function SGUtil_AddArmor(sg, squadType, factor)
+	local tempSG = SGUtil_GetSgBySquadType(sg, squadType)
+	if tempSG ~= nil and SGroup_Count(tempSG) > 0 then 
+		SGModify_MeleeArmor(tempSG, factor)
+		SGModify_RangedArmor(tempSG, factor)
+		SGModify_TrueDamageArmor(tempSG, factor)
+	end
+end
+
+-- 增加近战防御
+function SGUtil_AddMeleeArmor(sg, squadType, factor)
+	local tempSG = SGUtil_GetSgBySquadType(sg, squadType)
+	if tempSG ~= nil and SGroup_Count(tempSG) > 0 then 
+		SGModify_MeleeArmor(tempSG, factor)
+	end
+end
+
+
+-- 增加远程防御
+function SGUtil_AddRangedArmor(sg, squadType, factor)
+	local tempSG = SGUtil_GetSgBySquadType(sg, squadType)
+	if tempSG ~= nil and SGroup_Count(tempSG) > 0 then 
+		SGModify_RangedArmor(tempSG, factor)
+	end
+end
+
+
+-- 增加远程防御
+function SGUtil_AddAoeArmor(sg, squadType, factor)
+	local tempSG = SGUtil_GetSgBySquadType(sg, squadType)
+	if tempSG ~= nil and SGroup_Count(tempSG) > 0 then 
+		SGModify_TrueDamageArmor(tempSG, factor)
+	end
+end
+
+-- 增加攻击力
+function SGUtil_AddDamage(sg, squadType, factor)
+	print("SGUtil_AddDamage")
+	local tempSG = SGUtil_GetSgBySquadType(sg, squadType)
+	if tempSG ~= nil and SGroup_Count(tempSG) > 0 then 
+		print(SGroup_Count(tempSG))
+		SGModify_WeaponDamage(tempSG, "hardpoint_01", factor)
+		SGModify_WeaponDamage(tempSG, "hardpoint_02", factor)
+		SGModify_WeaponDamage(tempSG, "hardpoint_03", factor)
+		SGModify_WeaponDamage(tempSG, "hardpoint_04", factor)
+	end
+end
+
+-- 增加攻击力百分比
+function SGUtil_AddDamagePercent(sg, squadType, factor)
+	print("SGUtil_AddDamage")
+	local tempSG = SGUtil_GetSgBySquadType(sg, squadType)
+	if tempSG ~= nil and SGroup_Count(tempSG) > 0 then 
+		print(SGroup_Count(tempSG))
+		Modify_WeaponDamage(tempSG, "hardpoint_01", 1 + factor)
+	end
+end
+
+-- 增加攻击距离
+function SGUtil_AddDamageRange(sg, squadType, factor)
+	local tempSG = SGUtil_GetSgBySquadType(sg, squadType)
+	if tempSG ~= nil and SGroup_Count(tempSG) > 0 then 
+		Modify_WeaponRange(tempSG, "hardpoint_01", 1 + factor)
+		Modify_WeaponRange(tempSG, "hardpoint_02", 1 + factor)
+		Modify_WeaponRange(tempSG, "hardpoint_03", 1 + factor)
+		Modify_WeaponRange(tempSG, "hardpoint_04", 1 + factor)
+	end
+end
+
+-- 增加攻击速度
+function SGUtil_AddAttackSpeed(sg, squadType, factor)
+	local tempSG = SGUtil_GetSgBySquadType(sg, squadType)
+	if tempSG ~= nil and SGroup_Count(tempSG) > 0 then 
+		for i = 1, 4 do 
+			local hardPoint = "hardpoint_0"..i
+			--Modify_WeaponBurstRateOfFire(tempSG, "hardpoint_0"..i, 1 - factor)
+			Modify_WeaponReload(tempSG, hardPoint, 1 - factor)
+			Modify_WeaponCooldown(tempSG, hardPoint, 1 - factor)
+			SGModify_WeaponWindUp(tempSG, hardPoint, 1 - factor)
+			SGModify_WeaponWindDown(tempSG, hardPoint, 1 - factor)
+			SGModify_WeaponSetup(tempSG, hardPoint, 1 - factor)
+			SGModify_WeaponTeardown(tempSG, hardPoint, 1 - factor)
+			
+		end
+	end
+end
+
+-- 得到近战的sg(包含步兵和骑士)
+function SGUtil_GetMeleeSg(sg)
+	local tempSg = SGroup_CreateIfNotFound("meleeSG")
+	SGroup_Clear(tempSg)
+	local func = function(idx, t, sid)
+		if (Squad_IsOfType(sid, "infantry") or Squad_IsOfType(sid, "cavalry")) and not Squad_IsOfType(sid, "siege") then 
+			SGroup_Add(tempSg, sid)
+		end
+	end
+	
+	SGroup_ForEach(sg, func)
+	return tempSg
+end
+
+
+-- 得到远程的sg
+function SGUtil_GetRangedSg(sg)
+	local tempSg = SGroup_CreateIfNotFound("rangedSG")
+	SGroup_Clear(tempSg)
+	local func = function(idx, t, sid)
+		if (Squad_IsOfType(sid, "ranged") or Squad_IsOfType(sid, "archer") or  Squad_IsOfType(sid, "crossbow")  ) 
+			and not Squad_IsOfType(sid, "siege") then 
+			SGroup_Add(tempSg, sid)
+		end
+	end
+	
+	SGroup_ForEach(sg, func)
+	return tempSg
+end
+
+
+-- 得到攻城器的sg
+function SGUtil_GetSiegeSg(sg)
+	local tempSg = SGroup_CreateIfNotFound("siegeSG")
+	SGroup_Clear(tempSg)
+	local func = function(idx, t, sid)
+		if Squad_IsOfType(sid, "siege") then 
+			SGroup_Add(tempSg, sid)
+		end
+	end
+	SGroup_ForEach(sg, func)
+	return tempSg
+end
+
+-- 获取特定类型的单位sg
+function SGUtil_GetSgBySquadType(sg, squadType)
+	print("SGUtil_GetSgBySquadType:" .. SGroup_Count(sg))
+	if squadType ~= nil then 
+		print("SGUtil_GetSgBySquadType squadType:" .. squadType)
+	end
+	local tempSG = sg
+	
+	if squadType == SQUAD_MELEE then 
+		tempSG = SGUtil_GetMeleeSg(sg)
+	elseif squadType == SQUAD_RANGED then 
+		tempSG = SGUtil_GetRangedSg(sg)
+	elseif squadType == SQUAD_SIEGE then 
+		tempSG = SGUtil_GetSiegeSg(sg)
+	
+	end
+	print("SGUtil_GetSgBySquadType:" .. SGroup_Count(tempSG))
+	return tempSG
+end
+
+
+--? @shortdesc Modifies a squad or entity's armor
+--? @result modids
+--? @args SGroupID/EGroupID group, Real scalefactor[, Boolean exclusive]
+function SGModify_MeleeArmor(groupid, factor, exclusive)
+
+	-- create the appropriate modifier
+	local modifier = 0
+	local result = {}
+	
+	if scartype(exclusive) ~= ST_BOOLEAN then
+		exclusive = false
+	end
+	
+	
+	modifier = Modifier_Create(MAT_Entity, "armor_scalar_for_melee_damage", MUT_Addition, exclusive, factor, "")
+	
+	local _ApplyModifierToSquad = function(gid, idx, sid)
+		if Squad_IsAlive(sid) and Squad_Count(sid) > 0 then
+			local modids = Modifier_ApplyToSquad(modifier, sid, 0)
+			table.insert(result, modids)
+			Modifier_AddToSquadTable(sid, modids)
+		end
+	end
+	local _ApplyModifierToEntity = function(gid, idx, eid)
+		local modids = Modifier_ApplyToEntity(modifier, eid, 0)
+		table.insert(result, modids)
+		Modifier_AddToEntityTable(eid, modids)
+	end
+	
+	if (scartype(groupid) == ST_SGROUP) then								-- apply this to each squad in the group
+		SGroup_ForEachEx(groupid, _ApplyModifierToSquad, true, true)
+	elseif (scartype(groupid) == ST_EGROUP) then							-- apply this to each entity in the group
+		EGroup_ForEach(groupid, _ApplyModifierToEntity)
+	end
+	
+	return result
+	
+end
+
+
+--? @shortdesc Modifies a squad or entity's armor
+--? @result modids
+--? @args SGroupID/EGroupID group, Real scalefactor[, Boolean exclusive]
+function SGModify_RangedArmor(groupid, factor, exclusive)
+
+	-- create the appropriate modifier
+	local modifier = 0
+	local result = {}
+	
+	if scartype(exclusive) ~= ST_BOOLEAN then
+		exclusive = false
+	end
+	
+	
+	modifier = Modifier_Create(MAT_Entity, "armor_scalar_for_ranged_damage", MUT_Addition, exclusive, factor, "")
+	
+	local _ApplyModifierToSquad = function(gid, idx, sid)
+		if Squad_IsAlive(sid) and Squad_Count(sid) > 0 then
+			local modids = Modifier_ApplyToSquad(modifier, sid, 0)
+			table.insert(result, modids)
+			Modifier_AddToSquadTable(sid, modids)
+		end
+	end
+	local _ApplyModifierToEntity = function(gid, idx, eid)
+		local modids = Modifier_ApplyToEntity(modifier, eid, 0)
+		table.insert(result, modids)
+		Modifier_AddToEntityTable(eid, modids)
+	end
+	
+	if (scartype(groupid) == ST_SGROUP) then								-- apply this to each squad in the group
+		SGroup_ForEachEx(groupid, _ApplyModifierToSquad, true, true)
+	elseif (scartype(groupid) == ST_EGROUP) then							-- apply this to each entity in the group
+		EGroup_ForEach(groupid, _ApplyModifierToEntity)
+	end
+	
+	return result
+	
+end
+
+
+--? @shortdesc Modifies a squad or entity's armor
+--? @result modids
+--? @args SGroupID/EGroupID group, Real scalefactor[, Boolean exclusive]
+function SGModify_TrueDamageArmor(groupid, factor, exclusive)
+
+	-- create the appropriate modifier
+	local modifier = 0
+	local result = {}
+	
+	if scartype(exclusive) ~= ST_BOOLEAN then
+		exclusive = false
+	end
+	
+	
+	modifier = Modifier_Create(MAT_Entity, "armor_scalar_for_truedamage_damage", MUT_Addition, exclusive, factor, "")
+	
+	local _ApplyModifierToSquad = function(gid, idx, sid)
+		if Squad_IsAlive(sid) and Squad_Count(sid) > 0 then
+			local modids = Modifier_ApplyToSquad(modifier, sid, 0)
+			table.insert(result, modids)
+			Modifier_AddToSquadTable(sid, modids)
+		end
+	end
+	local _ApplyModifierToEntity = function(gid, idx, eid)
+		local modids = Modifier_ApplyToEntity(modifier, eid, 0)
+		table.insert(result, modids)
+		Modifier_AddToEntityTable(eid, modids)
+	end
+	
+	if (scartype(groupid) == ST_SGROUP) then								-- apply this to each squad in the group
+		SGroup_ForEachEx(groupid, _ApplyModifierToSquad, true, true)
+	elseif (scartype(groupid) == ST_EGROUP) then							-- apply this to each entity in the group
+		EGroup_ForEach(groupid, _ApplyModifierToEntity)
+	end
+	
+	return result
+	
+end
+
+
+--? @shortdesc Modifies a squad's weapon damage.
+--? @extdesc The hardpoint should be specified as a string - i.e. "hardpoint_01"
+--? @result modids
+--? @args SGroupID/EGroupID group, String hardpoint, Real scalefactor
+function SGModify_WeaponDamage(groupid, hardpoint, factor)
+
+	-- create the appropriate modifier
+	local modifier = Modifier_Create(MAT_Weapon, "damage_weapon_modifier", MUT_Addition, false, factor, hardpoint)
+	local result = {}
+	
+	local _ApplyModifierToSquad = function(gid, idx, sid)
+		if Squad_IsAlive(sid) and Squad_Count(sid) > 0 and Squad_HasWeaponHardpoint(sid, hardpoint) then
+			
+			local modids = Modifier_ApplyToSquad(modifier, sid, 0)
+			table.insert(result, modids)
+			Modifier_AddToSquadTable(sid, modids)
+		end
+	end
+	
+	local _ApplyModifierToEntity = function(gid, idx, eid)
+		if Entity_IsAlive(eid) then
+			local modids = Modifier_ApplyToEntity(modifier, eid, 0)
+			table.insert(result, modids)
+			Modifier_AddToEntityTable(eid, modids)
+		end
+	end
+	
+	if (scartype(groupid) == ST_SGROUP) then
+		-- apply this to each squad in the group
+		SGroup_ForEachEx(groupid, _ApplyModifierToSquad, true, true)
+	elseif (scartype(groupid) == ST_EGROUP) then
+		-- apply this to each entity in the group
+		EGroup_ForEachEx(groupid, _ApplyModifierToEntity, true, true)
+	end
+	
+	return result
+	
+end
+
+
+--? @shortdesc Modifies a squad's weapon damage.
+--? @extdesc The hardpoint should be specified as a string - i.e. "hardpoint_01"
+--? @result modids
+--? @args SGroupID/EGroupID group, String hardpoint, Real scalefactor
+function SGModify_WeaponWindUp(groupid, hardpoint, factor)
+
+	-- create the appropriate modifier
+	local modifier = Modifier_Create(MAT_Weapon, "weapon_wind_up_modifier", MUT_Multiplication, false, factor, hardpoint)
+	local result = {}
+	
+	local _ApplyModifierToSquad = function(gid, idx, sid)
+		if Squad_IsAlive(sid) and Squad_Count(sid) > 0 and Squad_HasWeaponHardpoint(sid, hardpoint) then
+			
+			local modids = Modifier_ApplyToSquad(modifier, sid, 0)
+			table.insert(result, modids)
+			Modifier_AddToSquadTable(sid, modids)
+		end
+	end
+	
+	local _ApplyModifierToEntity = function(gid, idx, eid)
+		if Entity_IsAlive(eid) then
+			local modids = Modifier_ApplyToEntity(modifier, eid, 0)
+			table.insert(result, modids)
+			Modifier_AddToEntityTable(eid, modids)
+		end
+	end
+	
+	if (scartype(groupid) == ST_SGROUP) then
+		-- apply this to each squad in the group
+		SGroup_ForEachEx(groupid, _ApplyModifierToSquad, true, true)
+	elseif (scartype(groupid) == ST_EGROUP) then
+		-- apply this to each entity in the group
+		EGroup_ForEachEx(groupid, _ApplyModifierToEntity, true, true)
+	end
+	
+	return result
+	
+end
+
+
+
+--? @shortdesc Modifies a squad's weapon damage.
+--? @extdesc The hardpoint should be specified as a string - i.e. "hardpoint_01"
+--? @result modids
+--? @args SGroupID/EGroupID group, String hardpoint, Real scalefactor
+function SGModify_WeaponWindDown(groupid, hardpoint, factor)
+
+	-- create the appropriate modifier
+	local modifier = Modifier_Create(MAT_Weapon, "weapon_wind_down_modifier", MUT_Multiplication, false, factor, hardpoint)
+	local result = {}
+	
+	local _ApplyModifierToSquad = function(gid, idx, sid)
+		if Squad_IsAlive(sid) and Squad_Count(sid) > 0 and Squad_HasWeaponHardpoint(sid, hardpoint) then
+			
+			local modids = Modifier_ApplyToSquad(modifier, sid, 0)
+			table.insert(result, modids)
+			Modifier_AddToSquadTable(sid, modids)
+		end
+	end
+	
+	local _ApplyModifierToEntity = function(gid, idx, eid)
+		if Entity_IsAlive(eid) then
+			local modids = Modifier_ApplyToEntity(modifier, eid, 0)
+			table.insert(result, modids)
+			Modifier_AddToEntityTable(eid, modids)
+		end
+	end
+	
+	if (scartype(groupid) == ST_SGROUP) then
+		-- apply this to each squad in the group
+		SGroup_ForEachEx(groupid, _ApplyModifierToSquad, true, true)
+	elseif (scartype(groupid) == ST_EGROUP) then
+		-- apply this to each entity in the group
+		EGroup_ForEachEx(groupid, _ApplyModifierToEntity, true, true)
+	end
+	
+	return result
+	
+end
+
+
+
+--? @shortdesc Modifies a squad's weapon damage.
+--? @extdesc The hardpoint should be specified as a string - i.e. "hardpoint_01"
+--? @result modids
+--? @args SGroupID/EGroupID group, String hardpoint, Real scalefactor
+function SGModify_WeaponTeardown(groupid, hardpoint, factor)
+
+	-- create the appropriate modifier
+	local modifier = Modifier_Create(MAT_Weapon, "weapon_teardown_modifier", MUT_Multiplication, false, factor, hardpoint)
+	local result = {}
+	
+	local _ApplyModifierToSquad = function(gid, idx, sid)
+		if Squad_IsAlive(sid) and Squad_Count(sid) > 0 and Squad_HasWeaponHardpoint(sid, hardpoint) then
+			
+			local modids = Modifier_ApplyToSquad(modifier, sid, 0)
+			table.insert(result, modids)
+			Modifier_AddToSquadTable(sid, modids)
+		end
+	end
+	
+	local _ApplyModifierToEntity = function(gid, idx, eid)
+		if Entity_IsAlive(eid) then
+			local modids = Modifier_ApplyToEntity(modifier, eid, 0)
+			table.insert(result, modids)
+			Modifier_AddToEntityTable(eid, modids)
+		end
+	end
+	
+	if (scartype(groupid) == ST_SGROUP) then
+		-- apply this to each squad in the group
+		SGroup_ForEachEx(groupid, _ApplyModifierToSquad, true, true)
+	elseif (scartype(groupid) == ST_EGROUP) then
+		-- apply this to each entity in the group
+		EGroup_ForEachEx(groupid, _ApplyModifierToEntity, true, true)
+	end
+	
+	return result
+	
+end
+
+
+
+--? @shortdesc Modifies a squad's weapon damage.
+--? @extdesc The hardpoint should be specified as a string - i.e. "hardpoint_01"
+--? @result modids
+--? @args SGroupID/EGroupID group, String hardpoint, Real scalefactor
+function SGModify_WeaponSetup(groupid, hardpoint, factor)
+
+	-- create the appropriate modifier
+	local modifier = Modifier_Create(MAT_Weapon, "weapon_setup_modifier", MUT_Multiplication, false, factor, hardpoint)
+	local result = {}
+	
+	local _ApplyModifierToSquad = function(gid, idx, sid)
+		if Squad_IsAlive(sid) and Squad_Count(sid) > 0 and Squad_HasWeaponHardpoint(sid, hardpoint) then
+			
+			local modids = Modifier_ApplyToSquad(modifier, sid, 0)
+			table.insert(result, modids)
+			Modifier_AddToSquadTable(sid, modids)
+		end
+	end
+	
+	local _ApplyModifierToEntity = function(gid, idx, eid)
+		if Entity_IsAlive(eid) then
+			local modids = Modifier_ApplyToEntity(modifier, eid, 0)
+			table.insert(result, modids)
+			Modifier_AddToEntityTable(eid, modids)
+		end
+	end
+	
+	if (scartype(groupid) == ST_SGROUP) then
+		-- apply this to each squad in the group
+		SGroup_ForEachEx(groupid, _ApplyModifierToSquad, true, true)
+	elseif (scartype(groupid) == ST_EGROUP) then
+		-- apply this to each entity in the group
+		EGroup_ForEachEx(groupid, _ApplyModifierToEntity, true, true)
+	end
+	
+	return result
+	
+end
+
+function SGUtil_RemoveSquadByBpName(sg, bpName)
+	if sg == nil then
+		return
+	end
+	local count = SGroup_Count(sg)
+	if count < 1 then 
+		return
+	end
+	for i = count, 1, -1 do 
+		local squad = SGroup_GetSquadAt(sg, i)
+		local bp = Squad_GetBlueprint(squad)
+		if BP_GetName(bp) == bpName then 
+			SGroup_Remove(sg, squad)
+		end
+	end
+end
+
+--? @shortdesc Modifies a squad's weapon damage.
+--? @extdesc The hardpoint should be specified as a string - i.e. "hardpoint_01"
+--? @result modids
+--? @args SGroupID/EGroupID group, String hardpoint, Real scalefactor
+function SGModify_HoldSightRadius(groupid, factor)
+
+	-- create the appropriate modifier
+	local modifier = Modifier_Create(MAT_Entity, "reinforce_radius_modifier", MUT_Multiplication, false, factor, "")
+	local result = {}
+
+	local _ApplyModifierToSquad = function(gid, idx, sid)
+		if Squad_IsAlive(sid) and Squad_Count(sid) > 0 then
+			local modids = Modifier_ApplyToSquad(modifier, sid, 0)
+			table.insert(result, modids)
+			Modifier_AddToSquadTable(sid, modids)
+		end
+	end
+	local _ApplyModifierToEntity = function(gid, idx, eid)
+		local modids = Modifier_ApplyToEntity(modifier, eid, 0)
+		table.insert(result, modids)
+		Modifier_AddToEntityTable(eid, modids)
+	end
+	
+	if (scartype(groupid) == ST_SGROUP) then								-- apply this to each squad in the group
+		SGroup_ForEachEx(groupid, _ApplyModifierToSquad, true, true)
+	elseif (scartype(groupid) == ST_EGROUP) then							-- apply this to each entity in the group
+		EGroup_ForEach(groupid, _ApplyModifierToEntity)
+	end
+	
+	return result
+	
+end

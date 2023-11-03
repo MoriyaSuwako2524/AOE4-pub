@@ -1,0 +1,137 @@
+import ("util/common_header.scar")
+import ("gameplay/ground.scar")
+
+Core_RegisterModule("PoisonCircle")
+
+_poisonCircle = {
+	radius = 0,
+	grounds = {
+		{}, {}, {}, {}
+	},
+	updateCount = 0,
+	enableUpdate = true,
+	currentRadius = 0,
+}
+
+function PoisonCircle_OnDeploymentEnd()
+	if Player_IsAlive(localPlayer.id) and localPlayer.hadEnemy then 
+		local GetZoom = Camera_GetZoomDist()
+		local enemy = PlayerMgr_GetEnemy(localPlayer.id)
+		Camera_StartPanTo(PlayerMgr_GetSpawnPos(enemy.id), 1, GetZoom)
+		Rule_AddOneShot(PoisonCircle_CameraToSelf, 3)
+	end
+end
+
+function PoisonCircle_CameraToSelf()
+	local GetZoom = Camera_GetZoomDist()
+	Camera_StartPanTo(PlayerMgr_GetSpawnPos(localPlayer.id), 1, GetZoom)
+	if ConfigUtil_IsAutoCombat() then 
+		--Rule_AddOneShot(PoisonCircle_CameraToCenter, 3)
+	end
+end
+
+function PoisonCircle_CameraToCenter()
+	local GetZoom = Camera_GetZoomDist()
+	Camera_StartPanTo(Ground_GetCenterPos(localPlayer.ground), 3, GetZoom)
+end
+
+function PoisonCircle_OnCombatStart()
+	_poisonCircle.radius = Ground_GetRadius()
+	PoisonCircle_Reset()
+	PoisonCircle_Update()
+	-- 10s 更新一次毒圈
+	Rule_AddInterval(PoisonCircle_Update, 1.8)
+	-- 每秒钟更新一次血量
+	Rule_AddInterval(PoisonCircle_AdjustHealth, 1)
+end
+
+
+function PoisonCircle_OnCombatEnd()
+	Rule_Remove(PoisonCircle_Update)
+	Rule_Remove(PoisonCircle_AdjustHealth)
+	PoisonCircle_Reset()
+end
+
+-- 调整单位的健康值
+function PoisonCircle_AdjustHealth()
+	for i,player in pairs(PLAYERS) do 
+		local sg = Player_GetSquads(player.id)
+		SGroup_ForEach(sg, PoisonCircle_AdjustSquadHealth)
+	end
+end
+
+function PoisonCircle_AdjustSquadHealth(gid, idx, squad) 
+	if not Squad_IsAlive(squad) then 
+		return 
+	end
+	local playerId = Squad_GetPlayerOwner(squad)
+	local player = Core_GetPlayersTableEntry(playerId)
+	local groundIdx = player.ground
+	local ground_center = Ground_GetCenterPos(groundIdx)
+	-- 超出距离就扣减10血
+	if Squad_IsAlive(squad) and World_DistancePointToPoint(Squad_GetPosition(squad), ground_center) >  _poisonCircle.currentRadius then 
+		local healthMax = Squad_GetHealthMax(squad)
+		local health = Squad_GetHealth(squad) - healthMax * 0.1
+		if health <= 0.1 then 
+			Squad_Kill(squad)
+			return
+		end
+		local healthPercent = health/healthMax
+		if healthPercent <= 0 then 
+			healthPercent = 0.01
+		elseif healthPercent > 1 then 
+			healthPercent = 1
+		end 
+		Squad_SetHealth(squad, healthPercent)
+	end
+end 
+
+-- 部署毒圈
+function PoisonCircle_Update()
+	if _poisonCircle.updateCount > 90 then 
+		return 
+	end
+	_poisonCircle.currentRadius = _poisonCircle.radius * (1 - _poisonCircle.updateCount * 0.01)
+	if _poisonCircle.currentRadius <= 10 then 
+		_poisonCircle.currentRadius = 10
+	end
+	--  campaign_capturelocation_enemy   attributes\ui_reticule\aura_ring   ability_red_damage
+	for i = 1, 4 do 
+		if _poisonCircle.grounds[i].id ~= nil then 
+			-- 存在就摧毁
+			UI_ModalVisual_Destroy(_poisonCircle.grounds[i].id)
+			_poisonCircle.grounds[i].id = nil
+		end
+		
+		
+		_poisonCircle.grounds[i].id = UI_ModalVisual_CreateReticule(BP_GetReticuleBlueprint("aura_ring"), _poisonCircle.currentRadius)
+		UI_ModalVisual_SetPosition(_poisonCircle.grounds[i].id, Ground_GetCenterPos(i))
+	end
+	
+	--[[
+	_poisonCircle.currentRadius = _poisonCircle.radius * (1 - _poisonCircle.updateCount * 0.1)
+	FOW_UnExploreAll()
+	FOW_UnRevealAll()
+	for i,player in pairs(PLAYERS) do 
+		FOW_PlayerRevealArea(player.id, world_center, _poisonCircle.currentRadius, 36000)
+	end
+	--]]
+	_poisonCircle.updateCount = _poisonCircle.updateCount + 1
+end
+
+
+-- 重置毒圈
+function PoisonCircle_Reset()
+	_poisonCircle.updateCount = 0
+	
+	for i = 1, 4 do 
+		if _poisonCircle.grounds[i].id ~= nil then 
+			-- 存在就摧毁
+			UI_ModalVisual_Destroy(_poisonCircle.grounds[i].id)
+			_poisonCircle.grounds[i].id = nil
+		end
+		_poisonCircle.grounds[i].id = UI_ModalVisual_CreateReticule(BP_GetReticuleBlueprint("aura_ring"), _poisonCircle.radius)
+		UI_ModalVisual_SetPosition(_poisonCircle.grounds[i].id, Ground_GetCenterPos(i))
+	end
+	
+end

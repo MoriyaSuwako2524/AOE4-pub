@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ProjectSettings xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/Essence.Editor.Core">
+	<LastDocumentDirectory>D:\aoe\scar\cards</LastDocumentDirectory>
+	<LastDocumentType>Script</LastDocumentType>
+	<PluginSettings xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+		<d2p1:anyType xmlns:d3p1="http://schemas.datacontract.org/2004/07/Essence.Editor.Controls" i:type="d3p1:FileExplorerProjectSettings">
+			<d3p1:ExpandedPaths>
+				<d2p1:KeyValueOfstringArrayOfstringty7Ep6D1>
+					<d2p1:Key>AssetExplorerGeneric</d2p1:Key>
+					<d2p1:Value>
+						<d2p1:string>assets\scar\cards\ability_cards.scar</d2p1:string>
+						<d2p1:string>assets\scar\cards\card_calss.scar</d2p1:string>
+						<d2p1:string>assets\scar\gameplay\relations.scar</d2p1:string>
+						<d2p1:string>assets\scar\gameplay\tavern_ai.scar</d2p1:string>
+						<d2p1:string>assets\scar\gameplay\tavern_round.scar</d2p1:string>
+						<d2p1:string>assets\scar\ui\pick_race_ui.scar</d2p1:string>
+						<d2p1:string>assets\scar\util\common_header.scar</d2p1:string>
+						<d2p1:string>assets\scar\util\config_util.scar</d2p1:string>
+						<d2p1:string>assets\scar\util\sgroup_util.scar</d2p1:string>
+						<d2p1:string>assets\scar\winconditions</d2p1:string>
+						<d2p1:string>assets\scenarios\multiplayer\tavern_map\tavern_map.exclude</d2p1:string>
+						<d2p1:string>assets\scenarios\multiplayer\tavern_map\tavern_map.info</d2p1:string>
+						<d2p1:string>assets\scenarios\multiplayer\tavern_map\tavern_map.scenario.user</d2p1:string>
+						<d2p1:string>assets\scenarios\multiplayer\tavern_map\tavern_map_metadata.override</d2p1:string>
+						<d2p1:string>assets\scenarios\multiplayer\tavern_map\tavern_map_mm_generated.rrtex</d2p1:string>
+						<d2p1:string>assets\scenarios\multiplayer\tavern_map\tavern_map_softmapedge.override</d2p1:string>
+						<d2p1:string>assets\ui\images\roles\wdly.rrtex</d2p1:string>
+						<d2p1:string>assets\ui\images\mod image.rrtex</d2p1:string>
+					</d2p1:Value>
+				</d2p1:KeyValueOfstringArrayOfstringty7Ep6D1>
+			</d3p1:ExpandedPaths>
+			<d3p1:Version>0</d3p1:Version>
+		</d2p1:anyType>
+		<d2p1:anyType xmlns:d3p1="http://schemas.datacontract.org/2004/07/Essence.Editor.ScriptEditor" i:type="d3p1:ScriptProjectSettings">
+			<d3p1:BookmarkSettings />
+			<d3p1:BreakpointSettings />
+		</d2p1:anyType>
+	</PluginSettings>
+	<RecentFiles>
+		<History xmlns:d3p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+			<d3p1:string>D:\aoe\test\assets\scar\cards\card_calss.scar</d3p1:string>
+			<d3p1:string>D:\aoe\test\assets\scar\cards\player_cards.scar</d3p1:string>
+			<d3p1:string>D:\aoe\test\assets\scar\ui\chosen_role_ui.scar</d3p1:string>
+			<d3p1:string>D:\aoe\test\assets\scar\ui\pick_race_ui.scar</d3p1:string>
+			<d3p1:string>D:\aoe\test\assets\scar\cards\cards_event.scar</d3p1:string>
+			<d3p1:string>D:\aoe\test\assets\scar\cards\squad_cards.scar</d3p1:string>
+			<d3p1:string>D:\aoe\test\assets\scar\cards\race_ability.scar</d3p1:string>
+			<d3p1:string>D:\aoe\test\assets\scar\cards\ability_cards.scar</d3p1:string>
+			<d3p1:string>D:\aoe\test\assets\scar\util\common_header.scar</d3p1:string>
+			<d3p1:string>D:\aoe\test\assets\scar\util\common_util.scar</d3p1:string>
+		</History>
+	</RecentFiles>
+</ProjectSettings>

@@ -1,0 +1,122 @@
+-- 轮次管理
+import("util/common_header.scar")
+import("cards/cards_event.scar")
+import("gameplay/tavern_ai.scar")
+import("gameplay/poison_circle.scar")
+
+Core_RegisterModule("TavernRound")
+
+_round_timer = "_round_timer"
+_battle_timer = "_battle_timer"
+
+_roundStart = false
+_deploymentStart = false
+
+function TavernRound_OnInit()
+	
+end
+
+function TavernRound_Start()
+	--TavernRound_RoundStart()
+end
+
+function TavernRound_RoundStart()
+	if not _roundStart then 
+		-- 更新轮次信息
+		ConfigUtil_UpdateRound()
+		Timer_Start(_round_timer, 30 + ConfigUtil_GetCurrentRound() * 4)
+		Rule_AddInterval(TavernRound_CheckReady, 1)
+		Core_CallDelegateFunctions("OnRoundStart")
+	end
+	_deploymentStart = false
+end
+
+function TavernRound_RoundEnd()
+	_roundStart = false
+	Core_CallDelegateFunctions("OnRoundEnd")
+	for i, player in pairs(PLAYERS) do 
+		SGroup_DestroyAllSquads(Player_GetSquads(player.id))
+	end
+end
+
+function TavernRound_GetRemainingSec()
+	return Timer_GetRemaining(_round_timer)
+end
+
+-- 检测轮次是否已经都准备好
+function TavernRound_CheckReady()
+	local leftSec = math.ceil( Timer_GetRemaining(_round_timer))
+	local showWarning = false
+	if leftSec == 20 then 
+		showWarning = true
+	elseif leftSec == 10 then 
+		showWarning = true
+	elseif leftSec == 5 then 
+		showWarning = true
+	elseif leftSec == 3 then 
+		showWarning = true
+	end
+	
+	if showWarning then 
+		UI_CreateEventCue(Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:4", leftSec), nil, "", "", "sfx_ui_event_queue_high_priority_play")
+	end
+	
+	HallUI_SetCountDown(Timer_GetRemaining(_round_timer))
+	-- 如果准备好了，就需要调用战斗开始
+	if Timer_GetRemaining(_round_timer) <= 0 then 
+		TavernRound_DeploymentStart()
+	end
+end
+
+function TavernRound_DeploymentStart()
+	if not _deploymentStart then 
+		_deploymentStart = true 
+		Timer_End(_round_timer)
+		Rule_Remove(TavernRound_CheckReady)
+		for _, player in pairs(PLAYERS) do 
+			player.spawnedSg = {}
+		end
+		Core_CallDelegateFunctions("OnDeploymentStart")
+		TavernRound_DeploymentEnd()
+	end
+end
+
+function TavernRound_DeploymentEnd()
+	Core_CallDelegateFunctions("OnDeploymentEnd")
+	Rule_AddOneShot(TavernRound_CombatStart, 5)
+end
+
+-- 战斗开始
+function TavernRound_CombatStart()
+	Core_CallDelegateFunctions("OnCombatStart")
+	if Misc_IsDevMode() then 
+		--Timer_Start(_battle_timer, 30)
+	else 
+		
+	end
+	Timer_Start(_battle_timer, 90 + (ConfigUtil_GetCurrentRound() - 1))
+end
+
+-- 获取战斗剩余时间
+function TavernRound_GetCombatLeftTime()
+	return Timer_GetRemaining(_battle_timer)
+end
+
+-- 战斗结束
+function TavernRound_CombatEnd()
+	Core_CallDelegateFunctions("OnCombatEnd") 
+	Timer_End(_battle_timer)
+	TavernRound_RoundStart()
+end
+
+-- 小场次战斗开始
+function TavernRound_SessionCombatStart()
+	
+	Core_CallDelegateFunctions("OnSessionCombatStart")
+end
+
+-- 小场次战斗结束
+function TavernRound_SessionCombatEnd()
+	
+	Core_CallDelegateFunctions("OnSessionCombatEnd")
+end
