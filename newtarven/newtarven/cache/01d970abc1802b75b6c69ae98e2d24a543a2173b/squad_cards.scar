@@ -1,0 +1,2262 @@
+import("util/common_header.scar")
+import("util/sgroup_util.scar")
+import("util/common_util.scar")
+import("cards/player_cards.scar")
+
+
+function SquadCard_GetNormalColor()
+	if not ConfigUtil_IsEnableMatchUI() then 
+		return "#754227"
+	end
+	return NORMAL_COLOR
+end
+
+function SquadCard_GetSuperColor()
+	if not ConfigUtil_IsEnableMatchUI() then 
+		return "Orange"
+	end
+	return SUPER_COLOR
+end
+
+
+function SquadCard_GetHadColor()
+	if not ConfigUtil_IsEnableMatchUI() then 
+		return "#70dbf3"
+	end
+	return HAD_COLOR
+end
+NORMAL_COLOR = "#101012"
+-- #FFDB88
+SUPER_COLOR = "#67a5d4"
+HAD_COLOR = "#d4af67"
+
+-- 卡牌自增长
+GROWUP_SELF_ADD = "self_add"
+-- 卡牌同文明增长
+GROWUP_SAMERACE_ADD = "same_race_add"
+-- 不同文明进场时，自身成长+1
+GROWUP_DIFF_RACE_SELF_ADD = "diff_race_self_add"
+-- 击杀奖励
+GROWUP_SELF_KILL_REWARD = "self_kill_reward"
+
+ABILITY_SELL_ADD_FOOD = "sell_add_food"
+
+ABILITY_SELL_ADD_GOLD = "sell_add_gold"
+
+Core_RegisterModule("SquadCards")
+
+GROWUP_CARD_INFO = {
+	self_add = {
+		DescFunc = function(squadCard, ability) 
+			return Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:11")
+		end,
+		activatedRound = 0,
+		abilityType = "growUpSquads",
+		OnRoundStart = function(playerId, areaType, idx, squadCard, ability, abilitiesIdx, context) 
+				local canProductionSquads = SquadsCards_GetProductionSquads(squadCard)
+				--Util_PrintTable(canProductionSquads)
+				local tempSquads = canProductionSquads[abilitiesIdx]
+				SquadCards_AddSpecialSquads(playerId, squadCard, tempSquads)	
+			end,
+	},
+	same_race_add = {
+		abilityId = "same_race_add_units",
+		abilityType = "growUpSquads",
+		activatedRound = 0,
+		DescFunc = function(squadCard, ability) 
+			local count = 1
+			
+			if SquadCards_IsTripleRewardCard(squadCard) then 
+				count = 2
+			end
+			local playerId = squadCard.playerId
+			local addCardCount = 3
+			if playerId ~= nil and PlayerMgr_GetLevel(Player_FromId(playerId)) > 3 then 
+				addCardCount = 3
+			end
+			
+			local addRoundPer = 1
+			if SquadCard_GetRace(squadCard) == RACE_DRAGON then 
+				addRoundPer = 2
+			end
+			return Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:131", count, addCardCount, addRoundPer)
+		end,
+		-- 三连合并
+		OnTripleMerge = function(squadCard, destAbility, oriAbility) 
+			print("OnTripleMerge...........")
+			local canProductionSquads = SquadsCards_GetProductionSquads(squadCard)
+			if #canProductionSquads > 1 then 
+				table.remove(canProductionSquads, 2)
+			end
+			
+		end,
+		OnRoundStart = function(playerId, areaType, idx, squadCard, ability, abilitiesIdx, context) 
+				if SquadCard_GetRace(squadCard) == RACE_DRAGON then 
+					local buyRound = SquadCards_GetBuyRound(squadCard)
+					if (ConfigUtil_GetCurrentRound() - buyRound) % 2 == 0 then 
+						return
+					end
+				end
+			
+				local canProductionSquads = SquadsCards_GetProductionSquads(squadCard)
+				--Util_PrintTable(canProductionSquads)
+				local tempSquads = canProductionSquads[abilitiesIdx]
+				SquadCards_AddSpecialSquads(playerId, squadCard, tempSquads)
+			
+				local count = 1
+				if SquadCards_IsTripleRewardCard(squadCard) then 
+					count = 2
+				end
+			
+				PlayerCard_AddSquadBySameRace(playerId, SquadCards_GetRace(squadCard), ADD_TYPE_COUNT, count)	
+			end,
+		OnLevelUp = function(playerId, areaType, idx, squadCard, ability, abilitiesIdx, context)
+			SquadCards_UpdateCardDefaultAbilityDesc(squadCard)
+		end
+	},
+	diff_race_self_add = {
+		abilityId = "diff_race_self_add_units",
+		abilityType = "growUpSquads",
+		activatedRound = 0,
+		diffRaceCardEnterCount = 0, -- 不同民族卡进场次数
+		growUpCount = 0,
+		roundReward = false, -- 轮次是否已经奖励
+		DescFunc = function(squadCard, ability) 
+			local addCount = 1
+			if SquadCards_IsTripleRewardCard(squadCard) then 
+				addCount = 2
+			end
+			return Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:136", addCount, ability.growUpCount)
+		end,
+		OnRoundStart = function(playerId, areaType, idx, squadCard, ability, abilitiesIdx, context)
+			ability.roundReward = false
+			local canProductionSquads = SquadsCards_GetProductionSquads(squadCard)
+			--Util_PrintTable(canProductionSquads)
+			for _, tempSquads in pairs(canProductionSquads) do 
+				SquadCards_AddSpecialSquads(playerId, squadCard, tempSquads)
+			end
+			--local tempSquads = canProductionSquads[abilitiesIdx]
+		end,
+		OnSquadCardBuy = function(playerId, areaType, idx, squadCard, ability, abilitiesIdx, context) 
+			
+			
+			if areaType == AREA_STANDARD then 
+				local newSquadCard = context.squadCard
+				local newAreaType = context.areaType
+				
+				if SquadCards_GetRace(newSquadCard) ~= SquadCards_GetRace(squadCard) then 
+					ability.diffRaceCardEnterCount = ability.diffRaceCardEnterCount + 1
+					if ability.diffRaceCardEnterCount % 2 == 0 and ability.growUpCount < 4 then 
+						local addCount = 1
+						if SquadCards_IsTripleRewardCard(squadCard) then 
+							addCount = 2
+						end
+						ability.growUpCount = ability.growUpCount + 1
+						ability.roundReward = true
+						local canProductionSquads = SquadsCards_GetProductionSquads(squadCard)
+						local firstSquads = canProductionSquads[1]
+						for bpName, count in pairs(firstSquads) do 
+							firstSquads[bpName] = count + addCount
+							break
+						end
+						SquadsCards_UpdateProductionSquadsDesc(nil, squadCard)
+						SquadCards_UpdateCardDefaultAbilityDesc(squadCard)
+					end
+				end
+			end
+		end,
+	},
+	sell_add_food = {
+			abilityId = "sellAdd1Food",
+			earnedFood = 1, --已赚取食物
+			OnRoundStart = function(playerId, areaType, idx, squadCard, ability, abilitiesIdx, context)
+				-- +1, +4
+				if areaType == AREA_STANDARD then 
+					local passRound = ConfigUtil_GetCurrentRound() - AbilityCards_GetEnterRound(ability)
+					print("passRound:" .. passRound)
+					if passRound % 2 == 0  then 
+						ability.earnedFood = ability.earnedFood + 1
+					end
+					SquadCards_UpdateCardDefaultAbilityDesc(squadCard)
+				end
+			end,
+			-- 三连合并
+			OnTripleMerge = function(squadCard, destAbility, oriAbility) 
+				destAbility.earnedFood = oriAbility.earnedFood + destAbility.earnedFood
+			end,
+			DescFunc = function(squadCard, ability) 
+				--[[
+				local count = 1 
+				if SquadCards_IsTripleRewardCard(squadCard) then 
+					count = 2
+				end
+				return Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:121", count)
+				
+				--]]
+				return Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:121", ability.earnedFood)
+			end,
+			OnSquadCardSale = function(playerId, areaType, idx, squadCard, ability, abilitiesIdx)
+				--[[
+				local count = 1
+				if SquadCards_IsTripleRewardCard(squadCard) then 
+					count = 2
+				end
+				PlayerMgr_AddFood(playerId, count)
+				--]]
+				PlayerMgr_AddFood(playerId, ability.earnedFood)
+			end
+		},
+	sell_add_gold = {
+			abilityId = "sellAdd1Gold",
+			earnedGold = 1, --已赚取食物
+			OnRoundStart = function(playerId, areaType, idx, squadCard, ability, abilitiesIdx, context)
+				-- +1, +4
+				if areaType == AREA_STANDARD then 
+					local passRound = ConfigUtil_GetCurrentRound() - AbilityCards_GetEnterRound(ability)
+					print("passRound:" .. passRound)
+					if passRound % 2 == 0  then 
+						ability.earnedGold = ability.earnedGold + 1
+					end
+					SquadCards_UpdateCardDefaultAbilityDesc(squadCard)
+				end
+			end,
+			-- 三连合并
+			OnTripleMerge = function(squadCard, destAbility, oriAbility) 
+				destAbility.earnedGold = oriAbility.earnedGold + destAbility.earnedGold
+			end,
+			DescFunc = function(squadCard, ability) 
+				--[[
+				local count = 1 
+				if SquadCards_IsTripleRewardCard(squadCard) then 
+					count = 2
+				end
+				return Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:121", count)
+				
+				--]]
+				return Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:145", ability.earnedGold)
+			end,
+			OnSquadCardSale = function(playerId, areaType, idx, squadCard, ability, abilitiesIdx)
+				--[[
+				local count = 1
+				if SquadCards_IsTripleRewardCard(squadCard) then 
+					count = 2
+				end
+				PlayerMgr_AddFood(playerId, count)
+				--]]
+				PlayerMgr_AddGold(playerId, ability.earnedGold)
+			end
+		},
+	self_kill_reward = {
+			abilityId = "self_kill_reward",
+			earningRewards = {}, -- 已获得的奖励
+			killedSquadCount = 0,
+			rewardType = "damage",
+			levelCompleteKilledCount = 10,
+			FuncGetLevelCompleteKilledCount = function(squadCard, ability)
+				local rewardLevel = #ability.earningRewards
+				local levelCompleteKilledCount = math.floor((rewardLevel + 1) * (70 + squadCard.level * 10) )
+				return levelCompleteKilledCount
+			end,
+			-- 三连合并
+			OnTripleMerge = function(squadCard, destAbility, oriAbility) 
+				-- 三连时，只保留右侧牌的奖励
+			end,
+			DescFunc = function(squadCard, ability) 
+
+				--return Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:56", ability.killedSquadCount, ability.levelCompleteKilledCount,
+				--ConfigUtil_GetAbilityRewardName(ability.rewardType), ConfigUtil_GetAbilityRewardEffect(ability.rewardType))
+				return ""
+			end,
+			-- 当击杀敌方单位时
+			OnKillSquad = function(playerId, arearType, idx, squadCard, ability, abilitiesIdx, context)
+				print("OnKillSquad....................")
+				local rewardLevel = #ability.earningRewards
+				local levelCompleteKilledCount = math.floor((rewardLevel + 1) * (70 + squadCard.level * 10) )
+				
+				
+				local killedSquadCount = ability.killedSquadCount + 1
+				if killedSquadCount >= levelCompleteKilledCount then 
+					killedSquadCount = 0
+					table.insert(ability.earningRewards, squadCard.rewardType)
+				end
+				ability.killedSquadCount = killedSquadCount
+				
+				levelCompleteKilledCount = math.floor((rewardLevel + 1) * (70 + squadCard.level * 10) )
+				ability.levelCompleteKilledCount = levelCompleteKilledCount
+				SquadCards_UpdateCardDefaultAbilityDesc(squadCard)
+			end,
+			OnDeploymentEnd = function(playerId, areaType, idx, squadCard, ability, abilitiesIdx, context)
+				print("OnDeploymentEnd....................")
+				local sg = PlayerCard_GetSG(squadCard)
+				for _, rewardType in pairs(ability.earningRewards) do 
+					SGUtil_AddAbility(sg, rewardType, ConfigUtil_GetAbilityRewardEffect(rewardType))
+				end
+			end,
+			OnRoundStart = function (playerId, areaType, idx, squadCard, ability, abilitiesIdx, context)
+				SquadCards_UpdateCardDefaultAbilityDesc(squadCard)
+			end
+		},
+}
+
+-- 存放卡牌数据
+_squad_cards = {
+}
+
+_squad_cards_combine_ids = {
+	
+}
+
+_squad_cards_map = {
+	
+}
+
+-- BP的文明、来源、类型
+_bp_mappings = {
+	
+}
+
+-- 卡牌选择的次数
+_squad_cards_selected = {
+	
+}
+
+-- BP选中次数
+_bp_selected_count = {
+	
+}
+
+_squads_card_level = {
+	{
+		price = 600,
+		productionPrice = 240,
+		age = {1, 2},
+		count = 3,
+		sources = {SOURCE_CAVALRY, SOURCE_INFANTRY, SOURCE_RANGED},
+		dist = {
+			masterAge = AGE_FEUDAL,
+			branchAge = AGE_DARK,
+		},
+	},{
+		price = 600,
+		productionPrice = 240,
+		age = {2},
+		count = 3,
+		sources = {SOURCE_CAVALRY, SOURCE_INFANTRY, SOURCE_RANGED},
+		dist = {
+			masterAge = AGE_FEUDAL,
+			branchAge = AGE_FEUDAL,
+		},
+	},{
+		price = 800,
+		age = {2, 3},
+		productionPrice = 480,
+		count = 3,
+		sources = {SOURCE_CAVALRY, SOURCE_INFANTRY, SOURCE_RANGED},
+		dist = {
+			masterAge = AGE_CASTLE,
+			branchAge = AGE_FEUDAL,
+		},
+	},{
+		price = 800,
+		productionPrice = 480,
+		age = {3},
+		count = 3,
+		sources = {SOURCE_CAVALRY, SOURCE_INFANTRY, SOURCE_RANGED},
+		dist = {
+			masterAge = AGE_CASTLE,
+			branchAge = AGE_CASTLE,
+			
+		},
+	},{
+		price = 1000,
+		productionPrice = 720,
+		age = {3, 4},
+		count = 3,
+		sources = { SOURCE_INFANTRY, SOURCE_CAVALRY, SOURCE_SIEGE},
+		dist = {
+			masterAge = AGE_IMPERIAL,
+			branchAge = AGE_CASTLE,
+		},
+	},{
+		price = 1000,
+		productionPrice = 720,
+		age = {4},
+		count = 3,
+		sources = {SOURCE_INFANTRY, SOURCE_RANGED, SOURCE_SIEGE, SOURCE_CAVALRY},
+		dist = {
+			masterAge = AGE_IMPERIAL,
+			branchAge = AGE_IMPERIAL,
+		},
+	}
+}
+
+
+function SquadCards_OnInit()
+	local squads = Util_GetAllSquads()
+	squads.campaign = nil
+	SquadsCards_InitMappings(Util_GetAllSquads())
+	SquadCards_Generate()
+end
+
+
+-- 动态生成单位卡牌
+function SquadCards_Generate()
+	local squads = Util_GetAllSquads()
+	-- 1级卡牌 为时代一和时代二混合 各民族3张， 总价值400
+	-- 2级卡牌 为2     各民族3张   600
+	-- 3级卡牌 为2、3  各民族2张   800
+	-- 4级卡牌 为3     各民族2张   1000
+	-- 5级卡牌 为3、4  各民族2张   1200
+	-- 6级卡牌 为4     各民族2张   1400
+	local races = {}
+	for race, _ in pairs(squads) do 
+		if race ~= "campaign" and not ConfigUtil_IsDlcRace(race) then 
+			table.insert(races, race)
+		end
+	end
+	table.sort(races)
+	local rand = World_GetRand(1, 3)
+	local randSource = SOURCE_CAVALRY
+	
+	
+	
+	if rand == 1 then 
+		randSource = SOURCE_INFANTRY
+	elseif rand == 2 then 
+		randSource = SOURCE_RANGED
+	end 
+	
+	
+	for _, race in pairs(races) do
+		SquadCards_ClearBpSelected()
+		local bps = squads[race]
+		local ageBps = SquadsCards_GetSquadsAgeMapping(bps)
+		local sources = {
+			SOURCE_CAVALRY, SOURCE_INFANTRY, SOURCE_RANGED
+		}
+		if race == RACE_HRE then 
+			Table_RemoveFirstItem(sources, SOURCE_INFANTRY)
+		end
+		local randSource1 = World_GetRand(1, #sources)
+		local randSource2 = World_GetRand(1, #sources)
+		local growUpSources = {
+			same_race_add = {
+				[1] = randSource,
+				[3] = randSource
+ 			},
+			diff_race_self_add =  {
+				[2] = sources[randSource1],
+				[4] = sources[randSource2] ,
+			},
+		}
+		for i= 1, 6 do 
+			SquadsCards_buildCards(race, ageBps, i, growUpSources)
+		end
+	end
+	SquadCards_ManualAddCards()
+	
+end
+
+-- 获得单位的时代关系
+function SquadsCards_GetSquadsAgeMapping(bps)
+	local map = {{}, {}, {}, {}}
+	for bpName, bp in pairs(bps) do 
+		local age = bp.age 
+		table.insert(map[age], bpName)
+	end
+	return map
+end
+
+-- 获得指定文明时代的单位列表
+function SquadsCards_GetSquadsByRaceAge(race, age) 
+	local squads = Util_GetAllSquads()
+	local bps = {}
+	for bpName, bp in pairs(squads[race]) do  
+		if bp.age == age then 
+			table.insert(bps, bpName)
+		end
+	end
+	
+	return bps
+end
+
+function SquadsCards_GetSquadsByRaceAgeExcludeSiege(race, age, masterBp) 
+	local squads = Util_GetAllSquads()
+	local bps = {}
+	local source = Util_GetSquadsSource(race, masterBp)
+	for bpName, bp in pairs(squads[race]) do  
+		if bp.age == age and not Util_SquadIsSiege(race, bpName) and string.find(bpName, "_monk_") == nil and string.find(bpName, "elephant") == nil
+			and string.find(bpName, "grenadier") == nil and ((source ~= SOURCE_SIEGE and bp.source == source) or source == SOURCE_SIEGE ) then 
+			table.insert(bps, bpName)
+		end
+	end
+	return bps
+end
+
+function SquadsCards_GetCombineId(squads) 
+	local bpNames = {}
+	for bpName, _ in pairs(squads) do 
+		table.insert(bpNames, bpName)
+	end
+	
+	table.sort(bpNames)
+	local id = ""
+	for _, bpName in pairs(bpNames) do 
+		id = id .. "|" .. bpName 
+	end
+	return id
+end
+
+function SquadCards_GetAll()
+	return _squad_cards
+end
+
+function SquadCards_GetLevel(squadCard)
+	return squadCard.level
+end
+
+
+function SquadsCards_ContainsCombineId(id)
+	return Util_TableContains(_squad_cards_combine_ids, id)
+end
+
+function SquadsCards_AddCombineId(id)
+	table.insert(_squad_cards_combine_ids, id)
+end
+
+function SquadCards_GetCivTile(race)
+	local finalRace = race
+	if race == "mongol" then 
+		finalRace = "mongols"
+	elseif race == RACE_AYYUBIDS then 
+		finalRace = RACE_ABB
+	elseif race == RACE_BYZANTINE then 
+		finalRace = "byz"
+	elseif race == RACE_DRAGON then 
+		finalRace = RACE_HRE
+	elseif race == RACE_ZHUXI then 
+		finalRace = RACE_CHI
+	elseif race == RACE_JEANNEDARC then 
+		finalRace = RACE_FRE
+	end
+	return string.format("pack://application:,,,/WPFGUI;component/images/backgrounds/civ/civ_tile_%s.png", 
+						finalRace)
+end
+
+function SquadCards_GetRacePresetIcon(race)
+	--images\skirmish\preset_civ_sultinates.png
+	local finalRace = race
+	if race == "english" then 
+		finalRace = "british"
+	elseif race == "hre" then 
+		finalRace = "roman"
+	elseif race == RACE_SUL then 
+		finalRace = "sultinates"
+	end
+	return string.format("pack://application:,,,/WPFGUI;component/images/skirmish/preset_civ_%s.png", 
+						finalRace)
+end
+
+function SquadCards_GetCardTypeIcon(cardType)
+	return "pack://application:,,,/WPFGUI;component/images/daily_quests/victory_condition_conquest.png"
+end
+
+function SquadCards_GetLevelStars(level)
+	local data = {}
+	for i = 1, level do 
+		table.insert(data, {icon =  "pack://application:,,,/WPFGUI;component/images/settings/xbox/star_highlighted.png"})
+	end
+	
+	return data
+end
+
+function SquadCards_ManualAddCards()
+	local race = RACE.ENGLISH
+	local cardId = "test1"
+	local age = AGE_IMPERIAL
+	local source = SOURCE_RANGED
+	local count = 4
+	local returnMap = {}
+	local squads = {}
+	local level = 1
+	returnMap = SquadCards_GetSquadsGroupManual(race,age,source,count)
+	squads = returnMap.squads
+	local squadCard = {
+		cardId = cardId,
+		name = cardId, --可选
+		abilityDescs = {"This is a test card"}, -- 卡牌描述
+		level = 1, -- 卡牌级别
+		cardType = SQUAD_CARD_TYPE_NORMAL, -- 一般级别的卡
+		foods = "", -- 需消耗资源
+		race = race,
+		defaultSquads = Clone(squads),
+		squads = squads,
+		raceIcon = Util_GetRaceIcon(race),
+		civTile =  SquadCards_GetCivTile(race),
+		racePresetIcon = SquadCards_GetRacePresetIcon(race),
+		cardTypeIcon = SquadCards_GetCardTypeIcon(nil),
+		productionSquads = {},
+		levelStars = SquadCards_GetLevelStars(level),
+		growUpType = GROWUP_SELF_ADD,
+		Color = SquadCard_GetNormalColor(),
+		abilityCount = 0,
+		totalValue = 200,
+		rewardType = "damage",
+		defaultAbilities = {
+			{
+			},
+		}, -- 默认能力
+		abilityCards = {
+			
+		},
+	}
+	table.insert(_squad_cards, squadCard)
+end
+
+function SquadsCards_buildCards(race, ageBps, level, growUpSources)
+	local req = _squads_card_level[level]
+	local ages = req.age
+	local price = req.price
+	local sources = req.sources
+	local dist = req.dist
+	for i, source in pairs(sources) do 
+		-- SquadsCards_GetSquadsGroup(race, ageBps, ages, price)
+		local returnMap = {}
+		local squads = {}
+		for j = 1, 100 do 
+			returnMap = SquadsCards_GetSquadsGroup(level, race, ageBps, ages, price, i, source, dist)
+			squads = returnMap.squads
+			local combineId = SquadsCards_GetCombineId(squads)
+			if not SquadsCards_ContainsCombineId(combineId) then 
+				SquadsCards_AddCombineId(combineId)
+				break
+			end
+			local baseId = Util_GetSquadsBaseId(race, returnMap.masterBp)
+			SquadCards_DecreaBpLimitedSelected(baseId)
+		end
+		
+		local growUpType = GROWUP_SELF_ADD
+		
+		for guType, sous in pairs(growUpSources) do 
+			if sous[level] ~= nil and source == sous[level] then 
+				growUpType = guType
+				break
+			end
+		end
+		--[[
+		if (level == 1 or level == 3) and source == randSource then 
+			growUpType = GROWUP_SAMERACE_ADD
+		end
+		
+		if (level == 2 or level == 4) and source == randSource then 
+			growUpType = GROWUP_DIFF_RACE_SELF_ADD
+		end
+		--]]
+		-- 是否要生成其它能力, 3成几率
+		local rand = World_GetRand(1, 20)
+		local generateOtherAbility = rand > 16 and level < 4 and growUpType == GROWUP_SELF_ADD and level > 1
+		local productionPrice = req.productionPrice
+		if generateOtherAbility then 
+			productionPrice = math.ceil(productionPrice * 0.6)
+		end
+		--[[
+		if growUpType == GROWUP_DIFF_RACE_SELF_ADD then
+			productionPrice = math.ceil(productionPrice * 0.8)
+		end
+		--]]
+		
+		local growUpAbility = GROWUP_CARD_INFO[growUpType]
+		
+		local productionSquads = SquadsCards_GetCanProductionSquads(race, level, returnMap.masterBp, productionPrice, dist, growUpType)
+		local cardId = string.format("%s_%s_%s", ConfigUtil_GetRaceAliasName(race), level, i)
+		local squadCard = {
+					cardId = cardId,
+					name = cardId, --可选
+					abilityDescs = {}, -- 卡牌描述
+					level = level, -- 卡牌级别
+					cardType = SQUAD_CARD_TYPE_NORMAL, -- 一般级别的卡
+					foods = "", -- 需消耗资源
+					race = race,
+					defaultSquads = Clone(squads),
+					squads = squads,
+					raceIcon = Util_GetRaceIcon(race),
+					civTile =  SquadCards_GetCivTile(race),
+					racePresetIcon = SquadCards_GetRacePresetIcon(race),
+					cardTypeIcon = SquadCards_GetCardTypeIcon(nil),
+					productionSquads = {},
+					levelStars = SquadCards_GetLevelStars(level),
+					growUpType = growUpType,
+					Color = SquadCard_GetNormalColor(),
+					abilityCount = 0,
+					totalValue = 200,
+					rewardType = "damage",
+					defaultAbilities = {
+						{
+						},
+					}, -- 默认能力
+					abilityCards = {
+						
+					},
+				}
+		table.insert(squadCard.defaultAbilities[1], growUpAbility)
+		
+		if generateOtherAbility then 
+			--print("-------generateOtherAbility------------")
+			--Util_PrintTable(squadCard.defaultAbilities)
+			local abilityRand = World_GetRand(1,2)
+			local addAbility = GROWUP_CARD_INFO[ABILITY_SELL_ADD_FOOD]
+			if abilityRand == 2 then 
+				addAbility = GROWUP_CARD_INFO[ABILITY_SELL_ADD_GOLD]
+			end
+			table.insert(squadCard.defaultAbilities[1], addAbility)
+			
+		end
+		table.insert(squadCard.defaultAbilities[1], GROWUP_CARD_INFO[GROWUP_SELF_KILL_REWARD])
+		
+		if level % 2 == 0 then 
+			local toAddAbilityId = "jisu"
+			if level == 2 then 
+
+			elseif level == 4 then 
+				toAddAbilityId = "qianghuazhuangjia"
+			elseif level == 6 then 
+				toAddAbilityId = "lizhan"
+			end
+			table.insert(squadCard.abilityCards, Clone(AbilityCards_GetById(toAddAbilityId)))
+			--Util_PrintTable(squadCard.abilityCards)
+		end
+		
+		table.insert(squadCard.productionSquads, productionSquads)
+		_squad_cards_map[cardId] = squadCard
+		SquadsCards_UpdateProductionSquadsDesc(nil, squadCard)
+		SquadCards_UpdateSquadsInfo(nil, squadCard)
+		SquadCards_UpdateCardDefaultAbilityDesc(squadCard)
+		table.insert(_squad_cards, squadCard)
+	end
+end
+
+
+function SquadCards_GetGrowUpType(squadCard)
+	return  squadCard.growUpType
+end
+
+function SquadsCards_GetAbilityDescs(squadCard)
+	return squadCard.abilityDescs
+end
+
+function SquadsCards_AddAbilityDesc(squadCard, desc)
+	if desc ~= nil then 
+		table.insert(squadCard.abilityDescs, {value = desc})
+	end
+end
+
+-- 更新卡牌默认能力描述（除单位成长外）
+function SquadCards_UpdateCardDefaultAbilityDesc(squadCard)
+	squadCard.abilityDescs = {}
+	local abilities = SquadCards_GetDefaultAbilities(squadCard)
+	for _, abs in pairs(abilities) do 
+		for _, ab in pairs(abs) do 
+			if ab.abilityId ~= nil then 
+				--print("SquadCards_UpdateCardDefaultAbilityDesc")
+				local desc = ab.DescFunc(squadCard, ab)
+				--print(desc)
+				table.insert(squadCard.abilityDescs, {value = desc})	
+				--Util_PrintTable(squadCard.abilityDescs)
+			end
+		end
+	end
+end
+
+function SquadsCards_AddAbilityDescs(squadCard, descs)
+	if descs ~= nil and #descs > 0  then 
+		for _, desc in pairs(descs) do
+			table.insert(squadCard.abilityDescs, desc)
+		end
+	end
+end
+
+-- 每轮需要动态生成的单位
+function SquadsCards_GetCanProductionSquads(race, level, masterBp, totalPrice, dist, growUpType)
+	local maxPrice = 0
+	local secondBpName = nil
+	local finalBpName = nil
+	local bpNames = {}
+	local isAllSiege = true
+	local count = 1
+	--[[
+	for bpName, _ in pairs(squads) do 
+		table.insert(bpNames, bpName)
+		if not Util_SquadIsSiege(race, bpName) then 
+			isAllSiege = false
+		end
+	end
+	--]]
+	isAllSiege = Util_SquadIsSiege(race, masterBp)
+	table.sort(bpNames)
+
+	if not isAllSiege and string.find(masterBp, "elephant") == nil and string.find(masterBp, "grenadier") == nil then 
+		--[[
+		for _, bpName in pairs(bpNames) do 
+			local price = Util_GetSquadsPrice(race, bpName)
+			--print("price:".. price)
+			if maxPrice <= price then 
+				maxPrice = price
+				secondBpName = finalBpName
+				finalBpName = bpName 
+			end
+		end
+		
+		if secondBpName ~= nil then 
+			local pickRand = World_GetRand(1, 2)
+			if pickRand == 0 then 
+				finalBpName = secondBpName
+			end
+		end
+		
+		if finalBpName == nil then 
+			finalBpName = bpNames[1]
+		end
+		--]]
+		finalBpName = masterBp
+		local price = Util_GetSquadsPrice(race, masterBp)
+		count = totalPrice / price
+		local n = count - math.floor(count)
+		if n >= 0.8 then 
+			count = math.ceil(count)
+		else
+			count = math.floor(count)
+		end
+		
+		
+		
+	else
+		finalBpName = nil
+		local bps = SquadsCards_GetSquadsByRaceAgeExcludeSiege(race, dist.branchAge, masterBp)
+		table.sort(bps)
+		for i = 1, 10 do 
+			local rand = World_GetRand(1, #bps)
+			finalBpName = bps[rand]
+			local baseId = Util_GetSquadsBaseId(race, finalBpName)
+			if not SquadCards_CheckBpLimitedSelected(baseId) and SquadCards_CheckBpAllowToBeMaster(finalBpName, level) then 
+				SquadCards_AddBpSelectedCount(baseId)
+				break 
+			end
+		end
+		if finalBpName == nil then 
+			local rand = World_GetRand(1, #bps)
+			finalBpName = bps[rand]
+		end
+		local price = Util_GetSquadsPrice(race, finalBpName)
+		count = math.floor(totalPrice/price)
+	end
+
+	if string.find(finalBpName, "_monk_") ~= nil and string.find(finalBpName, "_shaolin_") == nil then 
+		count = math.floor(count / 2)
+	end
+	
+	--[[
+	if string.find(finalBpName, "_repeater_crossbowman_") ~= nil  then 
+		count = math.ceil(count / 1.75)	
+	end
+	--]]
+	
+	if string.find(finalBpName, "_grenadier_") ~= nil then 
+		count = math.floor(count / 2)
+	end
+	
+	if finalBpName == "unit_handcannon_4_rus" then 
+		count = math.ceil(count * 0.8)
+	end
+	
+	if string.find(finalBpName, "elephant") ~= nil then 
+		count = 1
+	end
+	
+	if string.find(finalBpName, "camel") ~= nil and string.find(finalBpName, "archer") ~= nil then 
+		count = count - 1
+	end
+	
+	if count <= 0 then
+		count = 1
+	end
+	
+	count = SquadCards_GetGrowUpCount(finalBpName, level, count)
+	
+	if growUpType == GROWUP_SAMERACE_ADD then 
+		count = 1
+	end
+	
+
+	if growUpType == GROWUP_DIFF_RACE_SELF_ADD and count > 1 then 
+		count = count -1
+	end
+
+	
+	local map = {}
+	map[finalBpName] = count
+	
+	return map
+end
+
+
+function SquadsCards_GetProductionSquads(squadCard)
+	return squadCard.productionSquads	
+end
+
+
+function SquadCard_GetRace(card)
+	return card.race	
+end
+
+--[[
+function SquadsCards_GetSquadsGroup(level, race, ageBps, ages, totalPrice, idx, source, dist)
+	if source == SOURCE_SIEGE and level == 5 then 
+		-- 等级五的时候必定生成一个拍车类型单位
+		local siegeBps = {}
+		for _, age in pairs(ages) do 
+			local bps = ageBps[age]
+			for _, bpName in pairs(bps) do 
+				if Util_SquadIsMangonel(race, bpName) then 
+					table.insert(siegeBps, bpName)
+				end
+			end
+		end
+		
+		table.sort(siegeBps)
+		local rand = World_GetRand(1, #siegeBps)
+		local siegeBp = siegeBps[rand]
+		local squads = {}
+		squads[siegeBp] = 1
+		return squads
+	else
+		-- 可以组成的单位列表
+		local avaBps = {}
+		for _, age in pairs(ages) do 
+			local bps = ageBps[age]
+			for _, bpName in pairs(bps) do 
+				-- 拍车单位只有在等级五后才出现
+				if not (level < 5 and Util_SquadIsSiege(race, bpName)) then 
+					table.insert(avaBps, bpName)
+				end
+			end
+		end
+		
+		table.sort(avaBps)
+		
+		
+		
+		local squads = {}
+		local leftPrice = totalPrice
+		for i = 1, 100 do 
+			SquadsCards_GetAvaSbps(race, avaBps, leftPrice + (level - 1) * 200)
+			local bpCount = #avaBps
+			if bpCount == 0 then 
+				break
+			end
+			local rand = World_GetRand(1, bpCount)
+			local bpName = avaBps[rand]
+			
+			local cost = Util_GetSquadsPrice(race, bpName)
+			
+			--print("cost:" .. cost)
+			local maxCount = math.floor(leftPrice/cost)
+			if maxCount < 1 then 
+				maxCount = 1 
+			end
+			
+			local count = World_GetRand(1, maxCount)
+			if i == 3 then 
+				count = maxCount
+			end
+			
+			-- 如果是拍车类型单位， 就只有一个
+			if Util_SquadIsSiege(race, bpName) then 
+				count = 1
+				squads = {}
+			end
+			
+			leftPrice = leftPrice - count * cost 
+			if squads[bpName] == nil then 
+				squads[bpName] = count
+			else 
+				squads[bpName] = count +  squads[bpName] 
+			end
+			
+			if Util_SquadIsSiege(race, bpName) then 
+				break
+			end
+			
+			if i == 3 or leftPrice <= 0 then 
+				break
+			end
+		end
+		
+		return squads
+	end
+end
+	--]]
+function SquadCards_GetSquadsGroupManual(race,age,source,count)
+	local returnMap = {}
+	local squads = {}
+	returnMap.squads = squads
+	local masterBp = SquadsCards_GetMasterBpWithoutLevel(race, age, source)
+	returnMap.masterBp = masterBp
+	
+	
+	squads[masterBp] = count
+	totalPrice = totalPrice - masterCount * masterBpPrice
+	returnMap.squads = squads
+	return returnMap
+end
+
+
+function SquadsCards_GetMasterBpWithoutLevel(race, age, source)
+	local bps = SquadsCards_GetBpsFromBpMappings(race, age, source)
+	table.sort(bps)
+	if source == SOURCE_SIEGE then 
+		local count = #bps 
+		if count > 0 then 
+			for i = count, 1, -1 do 
+				local bpName = bps[i]
+				--print("SquadsCards_GetMasterBp check")
+				if Util_SquadIsMangonel(race, bpName) then 
+					--print("SquadsCards_GetMasterBp remove")
+					table.remove(bps, i)
+				end
+			end
+		end
+		if #bps == 0 then 
+			bps = SquadsCards_GetBpsFromBpMappings(race, age-1, source)
+			local count = #bps 
+			if count > 0 then 
+				for i = count, 1, -1 do 
+					local bpName = bps[i]
+					--print("SquadsCards_GetMasterBp check")
+					if Util_SquadIsMangonel(race, bpName) then 
+						--print("SquadsCards_GetMasterBp remove")
+						table.remove(bps, i)
+					end
+				end
+			end
+		end
+	end
+	
+	local count = #bps
+	table.sort(bps)
+	local uniqBps = {}
+	for _, bp in pairs(bps) do
+		if Util_GetSquadsIsUnique(race, bp) then 
+			table.insert(uniqBps, bp)
+		end
+	end
+	table.sort(uniqBps)
+	if bps ~= nil and #bps > 0 then 
+		for i = 1, 20 do 
+			local bp = nil
+			if i <= 2 and #uniqBps > 0  then 
+				local rand = World_GetRand(1, #uniqBps)
+				bp = uniqBps[rand]
+			else
+				local rand = World_GetRand(1, #bps)
+				bp = bps[rand]
+			end
+			if (string.find(bp, "elephant") ~= nil) or (string.find(bp, "elephant") == nil) then 
+				local baseId = Util_GetSquadsBaseId(race, bp)
+				--print(string.format("SquadsCards_GetMasterBp check %s: %s %s %s %s", baseId , race, age, source, bp))
+				return bp 
+			end
+		end
+	end
+	--print(string.format("SquadsCards_GetMasterBp: %s %s %s", race, age, source))
+	return nil 
+end
+
+
+
+function SquadsCards_GetSquadsGroup(level, race, ageBps, ages, totalPrice, idx, source, dist)
+	local returnMap = {}
+	local squads = {}
+	returnMap.squads = squads
+	if source == SOURCE_SIEGE and level == 6 then 
+		-- 等级6的时候必定生成一个拍车类型单位
+		local siegeBps = {}
+		for _, age in pairs({3, 4}) do 
+			local bps = ageBps[age]
+			for _, bpName in pairs(bps) do 
+				if Util_SquadIsMangonel(race, bpName) then 
+					table.insert(siegeBps, bpName)
+				end
+			end
+		end
+		
+		table.sort(siegeBps)
+		local rand = World_GetRand(1, #siegeBps)
+		local siegeBp = siegeBps[rand]
+		if siegeBp == "unit_great_bombard_4_ott" then 
+			squads[siegeBp] = 1
+		else 
+			squads[siegeBp] = 1
+		end
+		
+		returnMap.masterBp = siegeBp
+		return returnMap
+	else
+		
+		-- 主bp
+		local masterBp = SquadsCards_GetMasterBp(race, dist.masterAge, source, level)
+		returnMap.masterBp = masterBp
+		
+		
+		local masterBpPrice = Util_GetSquadsPrice(race, masterBp)
+		local masterMaxCount = math.floor(totalPrice/masterBpPrice)
+		if masterMaxCount < 1 then
+			masterMaxCount = 1
+		end
+		local masterCount = World_GetRand(1, masterMaxCount)
+		if string.find(masterBp, "springald") ~= nil then 
+			masterCount = 2
+		end
+		masterCount = SquadCards_GetBasicCount(masterBp, level, masterCount)
+		squads[masterBp] = masterCount
+		totalPrice = totalPrice - masterCount * masterBpPrice
+		
+		if totalPrice < 1 then 
+			return returnMap
+		end
+		
+		-- 可以组成的单位列表
+		local avaBps = {}
+		for _, age in pairs(ages) do 
+			local bps = ageBps[age]
+			for _, bpName in pairs(bps) do 
+				-- 拍车单位只有在等级五后才出现
+				if not Util_SquadIsSiege(race, bpName) and string.find(bpName, "elephant") == nil 
+					and SquadCards_CheckBpAllowToBeBranch(bpName, nil, masterBp, level) then 
+					table.insert(avaBps, bpName)
+				end
+			end
+		end
+		
+
+		table.sort(avaBps)
+		
+			-- 删除
+		Table_RemoveFirstItem(avaBps, masterBp)
+		
+		local leftPrice = totalPrice
+		for i = 1, 100 do 
+			SquadsCards_GetAvaSbps(race, avaBps, leftPrice)
+			local bpCount = #avaBps
+			if bpCount == 0 then 
+				break
+			end
+			local rand = World_GetRand(1, bpCount)
+			local bpName = avaBps[rand]
+			
+			local cost = Util_GetSquadsPrice(race, bpName)
+			
+			--print("cost:" .. cost)
+			local maxCount = math.floor(leftPrice/cost)
+			if maxCount < 1 then 
+				maxCount = 1 
+			end
+			
+			local count = World_GetRand(1, maxCount)
+			if i == 1 then 
+				count = maxCount
+			end
+			
+			-- 如果是拍车类型单位， 就只有一个
+			if Util_SquadIsSiege(race, bpName) then 
+				count = 1
+				squads = {}
+			end
+			
+			leftPrice = leftPrice - count * cost 
+			if squads[bpName] == nil then 
+				squads[bpName] = count
+			else 
+				squads[bpName] = count +  squads[bpName] 
+			end
+			
+			if Util_SquadIsSiege(race, bpName) then 
+				break
+			end
+			
+			if i == 1 or leftPrice <= 0 then 
+				break
+			end
+		end
+		returnMap.squads = squads
+		return returnMap
+	end
+end
+
+
+
+function SquadsCards_GetMasterBp(race, age, source, level)
+	local bps = SquadsCards_GetBpsFromBpMappings(race, age, source)
+	--if bps == nil then 
+		print(string.format("%s %s %s %s", race, age , source, level))
+	--end
+	table.sort(bps)
+	if source == SOURCE_SIEGE then 
+		local count = #bps 
+		if count > 0 then 
+			for i = count, 1, -1 do 
+				local bpName = bps[i]
+				--print("SquadsCards_GetMasterBp check")
+				if Util_SquadIsMangonel(race, bpName) then 
+					--print("SquadsCards_GetMasterBp remove")
+					table.remove(bps, i)
+				end
+			end
+		end
+		if #bps == 0 then 
+			bps = SquadsCards_GetBpsFromBpMappings(race, age-1, source)
+			local count = #bps 
+			if count > 0 then 
+				for i = count, 1, -1 do 
+					local bpName = bps[i]
+					--print("SquadsCards_GetMasterBp check")
+					if Util_SquadIsMangonel(race, bpName) then 
+						--print("SquadsCards_GetMasterBp remove")
+						table.remove(bps, i)
+					end
+				end
+			end
+		end
+	end
+	
+	local count = #bps
+	for i = count, 1 , -1 do 
+		if not SquadCards_CheckBpAllowToBeMaster(bps[i], level) then 
+			table.remove(bps, i)
+		end
+	end
+	table.sort(bps)
+	
+	local uniqBps = {}
+	for _, bp in pairs(bps) do
+		if Util_GetSquadsIsUnique(race, bp) then 
+			table.insert(uniqBps, bp)
+		end
+	end
+	table.sort(uniqBps)
+	if bps ~= nil and #bps > 0 then 
+		for i = 1, 20 do 
+			local bp = nil
+			if i <= 2 and #uniqBps > 0 and (level == 1 or level == 4 or level == 6) then 
+				local rand = World_GetRand(1, #uniqBps)
+				bp = uniqBps[rand]
+			else
+				local rand = World_GetRand(1, #bps)
+				bp = bps[rand]
+			end
+			if (level >= 4 and string.find(bp, "elephant") ~= nil) or (string.find(bp, "elephant") == nil) then 
+				local baseId = Util_GetSquadsBaseId(race, bp)
+				--print(string.format("SquadsCards_GetMasterBp check %s: %s %s %s %s", baseId , race, age, source, bp))
+				if not SquadCards_CheckBpLimitedSelected(baseId) or i == 20 then 
+					--print(string.format("SquadsCards_GetMasterBp: %s %s %s %s", race, age, source, bp))
+					SquadCards_AddBpSelectedCount(baseId)
+					return bp 
+				end
+			end
+		end
+	end
+	--print(string.format("SquadsCards_GetMasterBp: %s %s %s", race, age, source))
+	return nil 
+end
+
+
+-- 可以购买的单位
+function SquadsCards_GetAvaSbps(race, avaBps, price)
+	local count = #avaBps
+	for i = count, 1, -1 do 
+		local bpName = avaBps[i]
+		local cost = Util_GetSquadsPrice(race, bpName)
+		if cost > price then 
+			table.remove(avaBps, i)
+		end
+		if string.find(bpName, "_scout") ~= nil and race ~= "malian" then 
+			table.remove(avaBps, i)
+		end
+	end
+end
+
+-- 获得击杀奖励能力
+function SquadCards_GetKillRewardAbility(card)
+	local abilities = SquadCards_GetDefaultAbilities(card)
+	for _, abs in pairs(abilities) do 
+		for _, ab in pairs(abs) do 
+			if ab.abilityId == "self_kill_reward" then 
+				return ab
+			end
+		end
+	end
+	return nil
+end
+
+function SquadCards_GetId(squadCard) 
+	return squadCard.cardId
+end
+
+function SquadCards_GetRace(squadCard) 
+	return squadCard.race
+end
+
+
+-- 随机获得一张已经存在的卡(已有卡的前二等级)
+function SquadCards_RandGetExistsCard(playerId)
+	local round = PlayerMgr_GetHadSameCardRound(playerId)
+	if ConfigUtil_GetCurrentRound() - round < 3 or PlayerMgr_GetLevel(playerId) < 5 then 
+		return nil
+	end
+	local playerLevel = PlayerMgr_GetLevel(playerId)
+	
+	local minLevel = playerLevel - 2
+	if minLevel < 0 then 
+		minLevel = 1
+	end
+	local squadCards = PlayerCard_GetSquadCards(playerId)
+	local allAllowedSquadCards = {}
+	local allAllowedSquadCardIds = {}
+	for _, card in pairs(squadCards) do 
+		if card ~= nil and card.card ~= nil and SquadCards_IsNormalCard(card.card) 
+			and playerLevel >= card.card.level and SquadCards_IsCanPickedCard(card.card.cardId) then 
+			table.insert(allAllowedSquadCards, card.card)
+			
+			if card.card.level >= minLevel then 
+				table.insert(allAllowedSquadCardIds, card.card.cardId)
+			end
+		end
+	end
+	
+	local tempSquadCards = PlayerCard_GetTempAreaSquadCards(playerId) 
+	for _, card in pairs(tempSquadCards) do 
+		if card ~= nil and card.card ~= nil and SquadCards_IsNormalCard(card.card) 
+			and playerLevel >= card.card.level and SquadCards_IsCanPickedCard(card.card.cardId) then 
+			
+			table.insert(allAllowedSquadCards, card.card)
+			if card.card.level >= minLevel then 
+				table.insert(allAllowedSquadCardIds, card.card.cardId)
+			end
+		end
+	end
+	
+	if #allAllowedSquadCardIds == 0 then 
+		for _, card in pairs(allAllowedSquadCards) do 
+			table.insert(allAllowedSquadCardIds, card.cardId)
+		end
+	end
+	
+	if #allAllowedSquadCardIds > 0 then 
+		table.sort(allAllowedSquadCardIds)
+		local randIdx = World_GetRand(1, #allAllowedSquadCardIds)
+		local randCardId = allAllowedSquadCardIds[randIdx]
+		return SquadCards_GetById(randCardId)
+	else 
+		return nil
+	end
+end
+
+-- 随机获取单位卡牌
+function SquadCards_RandGetSquadCards(playerId, limit)
+	--print("..SquadCards_RandGetSquadCards..")
+	local player = Core_GetPlayersTableEntry(playerId)
+	local level = PlayerMgr_GetLevel(playerId)
+	local race = Player_GetRaceName(playerId)
+	local pickedRaces = PlayerMgr_GetPickedRaces(playerId)
+	local pickedRaceCount = #pickedRaces
+	table.sort(pickedRaces)
+	if ConfigUtil_IsDlcRace(race) then 
+		race = pickedRaces[1]
+	end
+	
+	
+	
+	
+
+	local levelCards = SquadCards_GetSquadCardsGroupByLevel(race, pickedRaces)
+	
+	-- 选中的卡牌
+	local selectedCards = {}
+	
+	for i = 1, limit do
+		local c = {}
+		local card = nil 
+		if i == 1 then 
+			card = SquadCards_RandGetExistsCard(playerId)
+			if card ~= nil then 
+				local otherRaceCards = levelCards[card.level].otherRaceCards
+				local raceCards = levelCards[card.level].raceCards
+				Table_RemoveFirstItem(raceCards, SquadCards_GetId(card))
+				Table_RemoveFirstItem(otherRaceCards, SquadCards_GetId(card))
+			end
+		end
+		if card == nil then 
+			local randCardLevel = World_GetRand(1, level)
+			if levelCards == nil  then 
+				print("levelCards is nil" )
+			end
+			if levelCards[randCardLevel] == nil  then 
+				print("levelCards is nil : " .. randCardLevel )
+			end
+			local otherRaceCards = levelCards[randCardLevel].otherRaceCards
+			local raceCards = levelCards[randCardLevel].raceCards
+			
+			-- 9-12 为本民族     7   
+			local rand = World_GetRand(1, 8)
+			
+			if rand > 5 and raceCards ~= nil and #raceCards > 0 then
+				local idx = World_GetRand(1, #raceCards) 
+				card = SquadCards_GetById(raceCards[idx])
+				table.remove(raceCards, idx)
+			elseif  #otherRaceCards > 0 then
+				-- 其它民族的
+				local idx = World_GetRand(1, #otherRaceCards) 
+				card = SquadCards_GetById(otherRaceCards[idx])
+				table.remove(otherRaceCards, idx)
+			end
+		end
+		if card ~= nil then 
+			local newCard = Clone(card)
+			c.index = i
+			newCard.cardState = CARD_STATE_BUY
+			c.card = newCard
+			table.insert(selectedCards, c)
+			
+			if PlayerCard_HadSquadCard(playerId, card.cardId) then 
+				PlayerMgr_SetHadSameCardRound(playerId)
+			end
+		end
+		
+		
+		
+	end
+	
+	return selectedCards
+
+end
+
+
+
+-- 根据卡牌等级分组卡牌
+function SquadCards_GetSquadCardsGroupByLevel(race, pickedRaces)
+	local squads = {}
+	local levelCards = {}
+	for level = 1, 6 do 
+		local otherRaceCards = {}
+		local raceCards = {}
+		for _, card in pairs(_squad_cards) do 
+			
+			if card.level == level and SquadCards_IsCanPickedCard(SquadCards_GetId(card)) 
+				and (SquadCards_GetGrowUpType(card) ~= GROWUP_SAMERACE_ADD or 
+				(SquadCards_GetGrowUpType(card) == GROWUP_SAMERACE_ADD and ConfigUtil_GetCurrentRound() > 2)) then 
+				if Table_Contains(pickedRaces, card.race) then 
+					local cards = squads[card.race]
+					if cards == nil then 
+						cards = {}
+					end 
+					table.insert(cards, card)
+					squads[card.race] = cards
+					
+					if race ~= card.race then 
+						table.insert(otherRaceCards, SquadCards_GetId(card))
+					else
+						table.insert(raceCards, SquadCards_GetId(card))
+					end
+				end
+			end
+		end
+		
+		table.sort(otherRaceCards)
+		
+		table.sort(raceCards)
+		
+		table.insert(levelCards, {
+			raceCards = raceCards,
+			otherRaceCards = otherRaceCards,
+		})
+	end
+	
+	return levelCards
+end
+
+
+-- 随机获取指定级别单位卡牌（玩家等级+1）
+function SquadCards_RandGetSquadCardsByLevel(playerId)
+	--print("..SquadCards_RandGetSquadCards..")
+	local player = Core_GetPlayersTableEntry(playerId)
+	local level = PlayerMgr_GetLevel(playerId)
+	if level < 6 then 
+		level = level + 1
+	end
+	local race = Player_GetRaceName(playerId)
+	local squads = {}
+	local otherRaceCards = {}
+	local raceCards = {}
+	local pickedRaces = PlayerMgr_GetPickedRaces(playerId)
+	local pickedRaceCount = #pickedRaces
+	for _, card in pairs(_squad_cards) do 
+		-- 只能随机到不高于玩家等级的卡牌
+		if card.level == level then 
+			if Table_Contains(pickedRaces, card.race) then 
+				local cards = squads[card.race]
+				if cards == nil then 
+					cards = {}
+				end 
+				table.insert(cards, card)
+				squads[card.race] = cards
+				
+				if race ~= card.race then 
+					table.insert(otherRaceCards, SquadCards_GetId(card))
+				else 
+					table.insert(raceCards, SquadCards_GetId(card))
+				end
+			end
+		end
+	end
+	
+	table.sort(otherRaceCards)
+	
+	table.sort(raceCards)
+	
+	-- 选中的卡牌
+	local selectedCards = {}
+	
+	for i = 1, 3 do
+		local c = {}
+		local card = nil 
+		-- 1/4的概率本民族
+		local rand = World_GetRand(1, pickedRaceCount + math.ceil(1/4 * pickedRaceCount))
+		if rand > pickedRaceCount and raceCards ~= nil and #raceCards > 0 then
+			local idx = World_GetRand(1, #raceCards) 
+			card = SquadCards_GetById(raceCards[idx])
+			table.remove(raceCards, idx)
+		elseif  #otherRaceCards > 0 then
+			-- 其它民族的
+			local idx = World_GetRand(1, #otherRaceCards) 
+			card = SquadCards_GetById(otherRaceCards[idx])
+			table.remove(otherRaceCards, idx)
+		end
+		if card ~= nil then 
+			local newCard = Clone(card)
+			c.index = i
+			newCard.cardState = CARD_STATE_BUY
+			c.card = newCard
+			table.insert(selectedCards, c)
+		end
+		
+	end
+	
+	return selectedCards
+	
+end
+
+
+function SquadCards_GetSquadsData(playerId, squadCard)
+	return squadCard.squads
+end
+
+
+function SquadsCards_UpdateProductionSquadsDesc(playerId, squadCard)
+	local pSquads = SquadsCards_GetProductionSquads(squadCard)
+	local desc = "每轮开始时为此卡牌新增："
+	local growUpType = SquadCards_GetGrowUpType(squadCard)
+	if growUpType == GROWUP_SELF_ADD then 
+		
+	elseif growUpType == GROWUP_SAMERACE_ADD then 
+		
+	end
+	local productSquadsInfo = {}
+	
+	local map  = {}
+	for _, squads in pairs(pSquads) do 
+		for bpName, count in pairs(squads) do 
+			local c = map[bpName]
+			if c == nil then 
+				c = 0
+			end
+			map[bpName] = c + count
+		end
+	end
+	
+	local bpNames = {}
+
+	for bpName, count in pairs(map) do
+		table.insert(bpNames, bpName)
+	end
+	
+	table.sort(bpNames)
+	for _, bpName in pairs(bpNames) do 
+		local bp = BP_GetSquadBlueprint(bpName)
+		local uiInfo = BP_GetSquadUIInfo(bp, World_GetRaceBlueprint(Util_GetRaceBySBP(bpName)))
+		local name = uiInfo.screenName
+		local count = map[bpName] 
+		table.insert(productSquadsInfo, {
+			name = name,
+			count = count,
+			icon = Util_GetSquadIcon(bpName)
+		})
+	end
+	
+	--[[
+	for _, squads in pairs(pSquads) do 
+		for bpName, count in pairs(squads) do 
+			local bp = BP_GetSquadBlueprint(bpName)
+			local uiInfo = BP_GetSquadUIInfo(bp, World_GetRaceBlueprint(Util_GetRaceBySBP(bpName)))
+			local name = uiInfo.screenName
+			--desc = desc .. name .. "*" .. tostring(count) .. ","
+			table.insert(productSquadsInfo, {
+				name = name,
+				count = count,
+			})
+		end
+	end
+	--]]
+	squadCard.productionSquadsDesc = desc
+	squadCard.productSquadsInfo = productSquadsInfo
+end
+
+-- 更新单位信息
+function SquadCards_UpdateSquadsInfo(playerId, squadCard)
+	local squads = SquadCards_GetSquadsData(playerId, squadCard)
+	local infos = {}
+	
+	local bps = {}
+	for bpName, count in pairs(squads) do 
+		table.insert(bps, bpName)
+	end
+	table.sort(bps)
+	
+	for _, bpName in pairs(bps) do 
+		count = squads[bpName]
+		local bp = BP_GetSquadBlueprint(bpName)
+		local uiInfo = BP_GetSquadUIInfo(bp, World_GetRaceBlueprint(Util_GetRaceBySBP(bpName)))
+		local name = uiInfo.screenName
+		table.insert(infos, {
+				name = name,
+				count = count,
+				icon = Util_GetSquadIcon(bpName)
+			})
+	end
+	squadCard.squadsInfo = infos
+	squadCard.totalValue = SquadCards_CalcTotalValue(squadCard)
+end
+
+-- 升级单位到指定时代
+function SquadCards_UpgradSquadsToAge(playerId, squadCard, age)
+	local race = Player_GetRaceName(playerId)
+	if squadCard ~= nil then
+		local squads = SquadCards_GetSquadsData(playerId, squadCard)
+		local newSquads = {}
+		for bpName, count in pairs(squads) do
+			local newBpName = Util_GetBpNameByAge(bpName, age)
+			if newBpName == nil then 
+				newBpName = bpName 
+			end
+			newSquads[newBpName] = count
+		end
+		squadCard.squads = newSquads
+		SquadCards_UpdateSquadsInfo(playerId, squadCard)
+	end
+end
+
+
+-- 升级单位到下一时代
+function SquadCards_UpgradeSquadsToNextAge(playerId, squadCard)
+	local race = Player_GetRaceName(playerId)
+	if squadCard ~= nil then
+		local squads = SquadCards_GetSquadsData(playerId, squadCard)
+		local newSquads = {}
+		for bpName, count in pairs(squads) do
+			local newBpName = Util_GetBpNameByHigherAge(bpName)
+			if newBpName == nil then 
+				newBpName = bpName 
+			end
+			if newSquads[newBpName] ~= nil then 
+				count = newSquads[newBpName] + count
+			end
+			newSquads[newBpName] = count
+		end 
+		local productionSquads = squadCard.productionSquads
+		local newProductionSquads = {}
+		for _, pSquads in pairs(productionSquads) do 
+			local nps = {}
+			table.insert(newProductionSquads, nps)
+			for bpName, count in pairs(pSquads) do 
+				local newBpName = Util_GetBpNameByHigherAge(bpName)
+				if newBpName == nil then 
+					newBpName = bpName 
+				end
+				if nps[newBpName] ~= nil then 
+					count = nps[newBpName] + count
+				end
+				nps[newBpName] = count
+			end
+		end
+		
+		local defaultSquads = SquadCards_GetDefaultSquads(squadCard)
+		local newDefaultSquads = {}
+		for bpName, count in pairs(defaultSquads) do
+			local newBpName = Util_GetBpNameByHigherAge(bpName)
+			if newBpName == nil then 
+				newBpName = bpName 
+			end
+			if newDefaultSquads[newBpName] ~= nil then 
+				count = newDefaultSquads[newBpName] + count
+			end
+			newDefaultSquads[newBpName] = count
+		end 
+		
+		squadCard.defaultSquads = newDefaultSquads
+		squadCard.productionSquads = newProductionSquads
+		squadCard.squads = newSquads
+		SquadCards_UpdateSquadsInfo(playerId, squadCard)
+		SquadsCards_UpdateProductionSquadsDesc(playerId, squadCard)
+		squadCard.cardType = SQUAD_CARD_TYPE_HIGHER
+		squadCard.Color = SquadCard_GetSuperColor()
+	end
+end
+
+-- 增加指定单位
+function SquadCards_AddSpecialSquads(playerId, squadCard, toAddedUnits)
+	local squads = squadCard.squads
+	for bpName, count in pairs(toAddedUnits) do 
+		if squads[bpName] ~= nil then 
+			squads[bpName] = squads[bpName] + count
+		else 
+			squads[bpName] = count
+		end
+	end
+	SquadCards_UpdateSquadsInfo(playerId, squadCard)
+end
+
+-- 计算卡牌的总价值
+function SquadCards_CalcTotalValue(squadCard)
+	if squadCard == nil then 
+		return 0	
+	end
+	local totalValue = 0
+	local squads = SquadCards_GetSquadsData(nil, squadCard)
+	--print("SquadCards_CalcTotalValue size:" .. #squads)
+	for bpName, count in pairs(squads) do 
+		local race = Util_GetRaceBySBP(bpName)
+		if race ~= nil then 
+			local value = Util_GetSquadsPrice(race, bpName)
+			if value ~= nil then 
+				totalValue = totalValue + value * count
+			end
+		end
+	end
+	return totalValue
+end
+
+-- 获取卡牌的总价值
+function SquadCards_GetTotalValue(card)
+	if card == nil or card.totalValue == nil then 
+		--Util_PrintTable(card)
+		return 0	
+	end
+	return card.totalValue
+end
+
+
+-- 增加现有单位数量
+function SquadCards_AddSquads(playerId, squadCard, addCount)
+	local squads = squadCard.squads
+	for bpName, count in pairs(squads) do 
+		squads[bpName] = count + addCount
+	end
+	SquadCards_UpdateSquadsInfo(playerId, squadCard)
+end
+
+-- 增加现有单位数量
+function SquadCards_AddSquadsByFirst(playerId, squadCard, addCount)
+	local squads = squadCard.squads
+	for bpName, count in pairs(squads) do 
+		squads[bpName] = count + addCount
+		break
+	end
+	SquadCards_UpdateSquadsInfo(playerId, squadCard)
+end
+
+-- 根据id获取卡牌
+function SquadCards_GetById(cardId)
+	return _squad_cards_map[cardId]
+end
+
+-- 获取默认能力
+function SquadCards_GetDefaultAbilities(squadCard)
+	return squadCard.defaultAbilities
+end
+
+-- 获取能力卡牌
+function SquadCards_GetAbilityCards(squadCard)
+	if squadCard == nil then 
+		--TODO 有时会出现squadCard为nil
+		return {}
+	end
+	return squadCard.abilityCards
+end
+
+
+-- 获取默认的单位列表
+function SquadCards_GetDefaultSquads(squadCard)
+	return squadCard.defaultSquads
+end
+
+
+function SquadCards_GetCardType(squadCard)
+	return squadCard.cardType 
+end
+
+function SquadCards_GetBuyRound(squadCard)
+	return squadCard.buyRound
+end
+
+function SquadCards_BuyEvent(squadCard)
+	squadCard.buyRound = ConfigUtil_GetCurrentRound()
+	--print("------SquadCards_BuyEvent:" .. SquadCards_GetId(squadCard))
+	local abilities = SquadCards_GetDefaultAbilities(squadCard)
+	for _, abs in pairs(abilities) do 
+		if abs ~= nil and #abs > 0 then 
+			for _, ab in pairs(abs) do 
+				AbilityCards_BuyEvent(ab)
+			end
+		end
+	end
+	SquadCards_UpdateCardDefaultAbilityDesc(squadCard)
+	--print("....................")
+end
+
+function SquadCards_EnterEvent(squadCard)
+	print("----SquadCards_EnterEvent:" .. SquadCards_GetId(squadCard))
+	local abilities = SquadCards_GetDefaultAbilities(squadCard)
+	for _, abs in pairs(abilities) do 
+		if abs ~= nil and #abs > 0 then 
+			for _, ab in pairs(abs) do 
+				AbilityCards_EnterEvent(ab)
+			end
+		end
+	end
+	print("----------------------")
+end
+
+-- 是否是普通卡
+function SquadCards_IsNormalCard(squadCard)
+	return squadCard.cardType == SQUAD_CARD_TYPE_NORMAL
+end
+
+
+function SquadCards_SetCardType(squadCard, cardType)
+	squadCard.cardType = cardType
+end
+
+-- 合并卡牌
+function SquadCards_Merge(playerId, from, to)
+	local player = Core_GetPlayersTableEntry(playerId)
+	
+	
+	local toAbilityCards = SquadCards_GetAbilityCards(to)
+	local fromAbilityCards = SquadCards_GetAbilityCards(from)
+	for _, abilityCard in pairs(fromAbilityCards) do 
+		table.insert(toAbilityCards, abilityCard)
+	end
+	
+	local fromDefaultSquads = SquadCards_GetDefaultSquads(from)
+	if #fromDefaultSquads > 0 then 
+		local toDefaultSquads = SquadCards_GetDefaultSquads(to)
+		table.insert(toDefaultSquads, fromDefaultSquads[1])
+	end
+	
+	
+	-- 每轮新增单位
+	local fromProductionSquads = SquadsCards_GetProductionSquads(from)
+	local toProductionSquads = SquadsCards_GetProductionSquads(to)
+	table.insert(toProductionSquads, fromProductionSquads[1])
+	SquadsCards_UpdateProductionSquadsDesc(playerId, to)
+	
+	local toSquads = SquadCards_GetSquadsData(player.id, to)
+	local fromSquads = SquadCards_GetSquadsData(player.id, from)
+	for bpName, count in pairs(fromSquads) do 
+		local toCount = toSquads[bpName]
+		if toCount ~= nil then 
+			toSquads[bpName] = count + toCount
+		else 
+			toSquads[bpName] = count
+		end
+	end
+	
+	local fromAbilities = SquadCards_GetDefaultAbilities(from)
+	if #fromAbilities > 0 then 
+		local toAbilities = SquadCards_GetDefaultAbilities(to)
+		local fromAbilities = fromAbilities[1]
+		local count = #fromAbilities
+		if count > 0 then 
+			for i = count, 1, -1 do 
+				local ability = fromAbilities[i]
+				if ability.abilityId ~= nil then 
+					for _, ab in pairs(toAbilities[1]) do 
+						if ab.abilityId ~= nil and ab.abilityId == ability.abilityId then 
+							table.remove(fromAbilities, i)
+							if ab.OnTripleMerge ~= nil then 
+								ab.OnTripleMerge(to,ab, ability)
+							end
+							break
+						end
+					end
+				end
+			end
+			table.insert(toAbilities, fromAbilities)
+		end
+	end
+	
+	to.abilityCount = to.abilityCount + from.abilityCount
+	to.Color = SquadCard_GetSuperColor()
+	-- 变成高级别的卡
+	SquadCards_SetCardType(to, SQUAD_CARD_TYPE_HIGHER)
+	SquadCards_UpdateSquadsInfo(playerId, to)
+	SquadCards_UpdateCardDefaultAbilityDesc(to)
+	return to
+end
+
+-- 是否可以选择本卡牌
+function SquadCards_IsCanPickedCard(cardId)
+	local pickCount = _squad_cards_selected[cardId]
+	if pickCount == nil then 
+		pickCount = 0
+	end
+	local card = SquadCards_GetById(cardId)
+	local limit = ConfigUtil_GetCardLevelCount(card.level)
+	--print(string.format("check picked card: %s , %s, %s" , cardId, pickCount, limit))
+	return pickCount == nil or pickCount < limit
+end
+
+-- 记录卡牌选中情况
+function SquadCards_RecordPickedCard(cardId)
+	local pickCount = _squad_cards_selected[cardId]
+	if pickCount == nil then 
+		pickCount = 0
+	end 
+	--print(string.format("record picked card: %s , %s" , cardId, pickCount))
+	_squad_cards_selected[cardId] = pickCount + 1
+end
+
+-- 减少选中次数
+function SquadCards_DecreaPickedCard(card)
+	local cardId = SquadCards_GetId(card)
+	local pickCount = _squad_cards_selected[cardId]
+	local cardCount = 1
+	if not SquadCards_IsNormalCard(card) then 
+		cardCount = 2
+	end
+	_squad_cards_selected[cardId] = pickCount - cardCount
+	print(string.format("%s pre:%s current:%s", cardId, pickCount, _squad_cards_selected[cardId]))
+end
+
+
+
+
+function SquadCards_GetAbilityCount(squadCard)
+	if squadCard ~= nil then 
+		return squadCard.abilityCount
+	else
+		return 0
+	end
+end
+
+function SquadCards_IncreaseAbilityCount(squadCard)
+	if squadCard ~= nil then 
+		squadCard.abilityCount = squadCard.abilityCount + 1
+	end
+end
+
+
+-- 检测是否还可以添加技能
+function SquadCards_CheckCanAddAbility(squadCard)
+	return SquadCards_GetAbilityCount(squadCard) < ConfigUtil_GetMaxAbilitisInSquadCard()
+end
+
+function SquadsCards_InitMappings(squads)
+	for _, race in pairs(Util_GetRaces()) do 
+		_bp_mappings[race] = {}
+	end
+	for _, race in pairs(Util_GetRaces()) do 
+		local bps = squads[race]
+		local raceBps = _bp_mappings[race]
+		if #raceBps == 0 then 
+			raceBps = {{},{},{},{}}
+			_bp_mappings[race] = raceBps
+		end
+		for bpName, bp in pairs(bps) do 
+			local age = bp.age 
+			local source = bp.source 
+			local ageBps = raceBps[age]
+			if ageBps == nil then 
+				ageBps = {}
+				raceBps[age] = ageBps
+			end
+			if ageBps[source] == nil then 
+				ageBps[source] = {}
+			end
+			table.insert(ageBps[source], bpName)
+		end
+	end
+end
+
+function SquadsCards_GetBpsFromBpMappings(race, age, source)
+	return _bp_mappings[race][age][source]
+end
+
+function SquadCards_ClearBpSelected()
+	_bp_selected_count = {}
+end
+
+function SquadCards_AddBpSelectedCount(baseId)
+	local count = _bp_selected_count[baseId]
+	if count == nil then 
+		_bp_selected_count[baseId] = 1
+	else 
+		_bp_selected_count[baseId] = count + 1
+	end
+end
+
+
+-- 检测bp是否已经超出限制了, 每个bp只能选择2次
+function SquadCards_CheckBpLimitedSelected(baseId)
+	local count = _bp_selected_count[baseId]
+	return count ~= nil and count > 2
+end
+
+function SquadCards_DecreaBpLimitedSelected(baseId)
+	local count = _bp_selected_count[baseId]
+	if count == nil then 
+		_bp_selected_count[baseId] = 0
+	else 
+		_bp_selected_count[baseId] = count - 1
+	end
+end
+
+-- 获取卡牌的技能描述列表
+function SquadCards_GetAbilitiesDesc(squadCard)
+	local descs = {}
+	local abilities = SquadCards_GetAbilityCards(squadCard)
+	for _, ability in pairs(abilities) do 
+		table.insert(descs, {
+				name = AbilityCards_GetName(ability),
+				desc = AbilityCards_GetDesc(ability),
+			})
+	end
+	return descs
+end
+
+-- 是否是三连卡片
+function SquadCards_IsTripleRewardCard(squadCard)
+	return squadCard.isTripleReward ~= nil and squadCard.isTripleReward
+end
+
+
+function SquadCards_SetIsTripleRewardCard(squadCard)
+	squadCard.isTripleReward = true
+	SquadCards_UpdateCardDefaultAbilityDesc(squadCard)
+end
+
+
+-- 扁平化的有序的单位列表
+function SquadsCards_GetFlatternProductionSquads(squadCard) 
+	local squads = SquadsCards_GetProductionSquads(squadCard)
+	local flatterns = {}
+	for _, s in pairs(squads) do 
+		local bps = {}
+		for bpName, count in pairs(s) do 
+			table.insert(bps,bpName)
+		end
+		table.sort(bps)
+		
+		for _,bpName in pairs(bps) do 
+			table.insert(flatterns, {
+					bpName = bpName,
+					count = s[bpName],
+				})
+		end
+	end
+	return flatterns
+end
+
+function SquadCards_CheckBpAllowToBeMaster(bpName, level)
+	local funcs = check_bp_add[bpName]
+	return funcs == nil or funcs.AllowToBeMasterFunc == nil or funcs.AllowToBeMasterFunc(level)
+end
+
+function SquadCards_CheckBpAllowToBeBranch(bpName, bp, masterBp, level)
+	local funcs = check_bp_add[bpName]
+	return funcs == nil or funcs.AllowToBeBranchFunc == nil or funcs.AllowToBeBranchFunc(masterBp, level)
+end
+
+
+function SquadCards_GetGrowUpCount(bpName, level, count)
+	local funcs = check_bp_add[bpName]
+	if funcs ~= nil and funcs.GetGrowUpCount ~= nil then 
+		return funcs.GetGrowUpCount(level)
+	else
+		return count
+	end
+end
+
+function SquadCards_GetBasicCount(bpName, level, count)
+	local funcs = check_bp_add[bpName]
+	if funcs ~= nil and funcs.GetBasicCount ~= nil then 
+		return funcs.GetBasicCount(level)
+	else
+		return count
+	end
+end
+
+
+check_bp_add = {
+	unit_handcannon_3_ott = {
+		-- 什么时候能够成为成长单位
+		AllowToBeMasterFunc = function (level)
+			return level > 3 
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return level > 3 
+		end
+	},
+	unit_manatarms_2_eng = {
+		AllowToBeMasterFunc = function (level)
+			return level > 1 
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return level > 1
+		end,
+	},
+	unit_manatarms_1_eng = {
+		AllowToBeMasterFunc = function (level)
+			return level > 1 
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return level > 1
+		end,
+	},
+	unit_monk_3_rus = {
+		AllowToBeMasterFunc = function(level)
+			return false
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return false
+		end,
+	},
+	unit_monk_4_rus = {
+		AllowToBeMasterFunc = function(level)
+			return false
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return false
+		end,
+	},
+	unit_mehter_2_ott = {
+		AllowToBeMasterFunc = function(level)
+			return false
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return false
+		end,
+	},
+	unit_monk_buddhist_3_jpn = {
+		AllowToBeMasterFunc = function(level)
+			return false
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return false
+		end,
+	},
+	unit_monk_2_rus = {
+		AllowToBeMasterFunc = function(level)
+			return false
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return false
+		end,
+	},
+	unit_monk_1_rus = {
+		AllowToBeMasterFunc = function(level)
+			return false
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return false
+		end,
+	},
+	unit_manatarms_2_hre = {
+		AllowToBeMasterFunc = function (level)
+			return level > 1 
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return level > 1
+		end,
+	},
+	unit_manatarms_2_hre_ha_01 = {
+		AllowToBeMasterFunc = function (level)
+			return level > 1 
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return level > 1
+		end,
+	},
+	unit_grenadier_4_chi = {
+		GetGrowUpCount = function (level)
+			return 0
+		end,
+		GetBasicCount = function (level)
+			return 4
+		end
+	},
+	unit_grenadier_4_chi_ha_01 = {
+		GetGrowUpCount = function (level)
+			return 0
+		end,
+		GetBasicCount = function (level)
+			return 4
+		end
+	},
+	unit_repeater_crossbowman_2_chi = {
+		AllowToBeMasterFunc = function (level)
+			return false
+		end,
+	},
+	unit_horsearcher_2_mon = {
+		AllowToBeMasterFunc = function (level)
+			return false
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return false
+		end,
+	},
+	unit_scout_1_mal = {
+		AllowToBeMasterFunc = function (level)
+			return false
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return false
+		end,
+	},
+	unit_scout_2_mal = {
+		AllowToBeMasterFunc = function (level)
+			return false
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return false
+		end,
+	},
+	unit_yuan_guard_4_chi_ha_01 = {
+		AllowToBeMasterFunc = function (level)
+			return level > 4 
+		end,
+		AllowToBeBranchFunc = function (masterBp, level)
+			return level > 4 
+		end,
+	},
+}
+

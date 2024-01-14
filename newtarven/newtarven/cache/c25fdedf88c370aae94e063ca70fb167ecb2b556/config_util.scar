@@ -1,0 +1,232 @@
+-- Import Utility Scripts
+import("cardinal.scar")							-- Contains sfx references, UI templates, and Civ/Age helper functions
+import("ScarUtil.scar")							-- Contains game helper functions
+import("gameplay/player_mgr.scar")
+
+_tavern_config = {
+	options = {
+		common_settings = {
+			enable_auto_combat = true,
+			enable_match_ui = true,
+			enable_test_mode = false,
+		},
+	},
+	modPath = "",
+}
+
+Core_RegisterModule("ConfigUtil")
+
+ROUND = 0
+GOLD_LIMIT = 50
+FOOD_LIMIT = 200
+
+RACE_ENG = "english"
+RACE_CHI = "chinese"
+RACE_RUS = "rus"
+RACE_ABB = "abbasid"
+RACE_SUL = "sultanate"
+RACE_FRE = "french"
+RACE_MON = "mongol"
+RACE_HRE = "hre"
+RACE_OTT = "ottoman"
+RACE_MAL = "malian"
+RACE_JAP = "japanese"
+RACE_JEANNEDARC = "french_ha_01"
+RACE_AYYUBIDS = "abbasid_ha_01"
+RACE_BYZANTINE = "byzantine"
+RACE_ZHUXI = "chinese_ha_01"
+RACE_DRAGON = "hre_ha_01"
+
+_tavern_races = {
+	english = RACE.ENGLISH,
+	chinese = RACE.CHINESE,
+	rus = RACE.CHINESE,
+	abbasid = RACE.ABBASID,
+	sultanate = RACE.SULTANATE,
+	french = RACE.FRENCH,
+	mongol = RACE.MONGOL,
+	hre = RACE.HRE,
+	ottoman = RACE.OTTOMAN,
+	malian = RACE.MALIAN,
+	abbasid_ha_01 = RACE.ABBASID_HA_01,
+	byzantine = RACE.BYZANTINE,
+	japanese = RACE.JAPANESE,
+	french_ha_01 = RACE.FRENCH_HA_01,
+	hre_ha_01 = RACE.HRE_HA_01,
+	chinese_ha_01 = RACE.CHINESE_HA_01,
+}
+
+_dlc_races = {
+	
+	"byzantine", "japanese", 
+	--"french_ha_01", "abbasid_ha_01", "hre_ha_01", "chinese_ha_01"
+}
+
+_tavern_races_alias = {
+	english = "english",
+	chinese = "chinese",
+	rus = "rus",
+	abbasid = "abbasid",
+	sultanate = "sultanate",
+	french = "french",
+	mongol = "mongol",
+	hre = "hre",
+	ottoman = "ottoman",
+	malian = "malian",
+	abbasid_ha_01 = "ayyubid",
+	byzantine = "byz",
+	japanese = "japanese",
+	french_ha_01 = "jeanne",
+	hre_ha_01 = "dragon",
+	chinese_ha_01 = "zhuxi",
+}
+
+
+
+function ConfigUtil_OnInit()
+	local success, result = pcall(function() return a.txt end)
+	if not success then
+		local match = string.gmatch(result, "data[+]%d+")
+		local matchStr = match()	
+		_tavern_config.modPath = matchStr
+	end
+end
+
+
+-- 获得模组的路径，格式为：data+序号，如 data+2；不同电脑上的数据是不一样的 
+function ConfigUtil_GetModPath()
+	return _tavern_config.modPath
+end
+
+function ConfigUtil_GetRaceAliasName(raceName)
+	return _tavern_races_alias[raceName]
+end
+
+function ConfigUtil_IsDlcRace(raceName)
+	if Misc_IsDevMode() then 
+		--return false
+	end
+	--_dlc_races = {}
+	return Table_Contains(_dlc_races, raceName)
+end
+
+--[[
+ayyubids = RACE.ABBASID_HA_01,
+byzantine = RACE.BYZANTINE,
+japanese = RACE.JAPANESE,
+jeannedarc = RACE.JEANNEDARC,
+orderofthedragon = RACE.ORDEROFTHEDRAGON,
+zhuxi = RACE.ZHUXI,
+--]]
+function ConfigUtil_GetRaceBP(race)
+	return _tavern_races[race]
+end
+
+function ConfigUtil_OnGameSetup()
+	Setup_GetWinConditionOptions(_tavern_config.options)
+	_tavern_config.enable_auto_combat = _tavern_config.options.common_settings.enable_auto_combat
+	_tavern_config.enable_match_ui = _tavern_config.options.common_settings.enable_match_ui
+	_tavern_config.enable_test_mode = _tavern_config.options.common_settings.enable_test_mode
+
+end
+
+function ConfigUtil_IsEnableMatchUI()
+	return _tavern_config.enable_match_ui
+end
+
+-- 当前是第几轮
+function ConfigUtil_GetCurrentRound()
+	return ROUND
+end
+
+
+
+-- 更新轮次信息以及食物和黄金上限
+function ConfigUtil_UpdateRound()
+	ROUND = ROUND + 1
+	FOOD_LIMIT = FOOD_LIMIT + 1
+end
+
+-- 获取食物上限
+function ConfigUtil_GetFoodLimit()
+	return FOOD_LIMIT
+end
+
+-- 获取黄金上限
+function ConfigUtil_GetGoldLimit()
+	return GOLD_LIMIT
+end
+
+-- 单位卡牌价格
+function ConfigUtil_GetSquadCardPrice()
+	return 3
+end
+
+-- 能力卡牌价格
+function ConfigUtil_GetAbilityCardPrice()
+	return 2
+end
+
+function ConfigUtil_GetLevelupGolds()
+	local levelUpGolds = {
+		5, 7, 8, 9, 11
+	}
+	return levelUpGolds
+end
+
+-- 是否需要自动战斗
+function ConfigUtil_IsAutoCombat()
+	return _tavern_config.enable_auto_combat
+end
+
+function ConfigUtil_IsTestMode()
+	return _tavern_config.enable_test_mode
+end
+
+-- 每张单位卡牌最多多少技能
+function ConfigUtil_GetMaxAbilitisInSquadCard()
+	return 5
+end
+
+-- 获取卡牌的等级数量限制
+function ConfigUtil_GetCardLevelCount(level)
+	local map = {
+		6, 6, 5, 5, 4, 4
+	}
+	return map[level]
+end
+
+MODIFY_ABILITY_DAMAGE = "damage"
+MODIFY_ABILITY_ARMOR_RANGED = "rangedArmor"
+MODIFY_ABILITY_ARMOR_MELEE = "meleeArmor"
+MODIFY_ABILITY_ARMOR_TRUE_DAMAGE = "trueDamageArmor"
+MODIFY_ABILITY_MAX_HEALTH = "maxHealth"
+MODIFY_ABILITY_ATTACK_SPEED = "attackSpeed"
+
+
+_tavern_ability_name_mappings = {
+	damage = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:50"),
+	rangedArmor = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:51"),
+	meleeArmor = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:52"),
+	trueDamageArmor = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:53"),
+	maxHealth = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:54"),
+	attackSpeed = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:55"),
+}
+
+_tavern_ability_name_effect_mappings = {
+	damage = 1,
+	rangedArmor = 1,
+	meleeArmor = 1,
+	trueDamageArmor = 1,
+	maxHealth = 30,
+	attackSpeed = 0.1,
+}
+
+function ConfigUtil_GetAbilityRewardName(rewardType)
+	return _tavern_ability_name_mappings[rewardType]
+end
+
+
+function ConfigUtil_GetAbilityRewardEffect(rewardType)
+	return _tavern_ability_name_effect_mappings[rewardType]
+end

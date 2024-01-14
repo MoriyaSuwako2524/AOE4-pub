@@ -1,0 +1,16 @@
+-- Import Utility Scripts
+import("cardinal.scar")							-- Contains sfx references, UI templates, and Civ/Age helper functions
+import("ScarUtil.scar")							-- Contains game helper functions
+import("util/common_util.scar")
+import("util/config_util.scar")
+import("cards/tavern_roles.scar")
+import("cards/squad_cards.scar")
+import("cards/ability_cards.scar")
+
+
+SQUAD_MELEE = "melee" 
+SQUAD_SIEGE = "siege"
+SQUAD_RANGED = "ranged"
+
+SQUAD_CARD_TYPE_NORMAL = 0
+SQUAD_CARD_TYPE_HIGHER = 1

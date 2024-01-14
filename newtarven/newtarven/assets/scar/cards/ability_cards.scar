@@ -1,0 +1,562 @@
+-- 能力卡牌
+import("util/common_header.scar")
+import("cards/player_cards.scar")
+import("json.scar")
+
+
+Core_RegisterModule("AbilityCards")
+
+_unit_teches_defined = json.decode(
+[[{"upgrade_teardrop_shields_byz":{"age":3,"level":-1,"sbps":["unit_knight_3_byz","unit_knight_4_byz"]},"upgrade_hippodrome_horseman_byz":{"age":2,"level":-1,"sbps":["unit_horseman_2_byz","unit_horseman_3_byz","unit_horseman_4_byz"]},"upgrade_siege_roller_trigger":{"age":4,"level":-1,"sbps":["unit_springald_3_abb","unit_springald_3_abb_ha_01","unit_springald_3_byz","unit_springald_3_chi","unit_springald_3_eng","unit_springald_3_fre","unit_springald_3_hre","unit_springald_3_jpn","unit_springald_3_fre","unit_springald_3_mal","unit_springald_3_hre_ha_01","unit_springald_3_ott","unit_springald_3_rus","unit_springald_3_chi_ha_01"]},"upgrade_crossbow_siege_damage_hre_ha_01":{"age":4,"level":-1,"sbps":["unit_crossbowman_3_hre_ha_01","unit_crossbowman_4_hre_ha_01"]},"upgrade_mil_mameluke_shields_abb":{"age":3,"level":-1,"sbps":["unit_camel_rider_3_abb","unit_camel_rider_4_abb"]},"upgrade_lancer_healing_mon":{"age":3,"level":-1,"sbps":["unit_knight_2_mon","unit_knight_3_mon","unit_knight_4_mon"]},"upgrade_man_at_arms_maces_hre":{"age":3,"level":-1,"sbps":["unit_manatarms_2_hre","unit_manatarms_3_hre","unit_manatarms_4_hre"]},"upgrade_saints_blessing_buff_effect_rus":{"age":3,"level":-1,"sbps":["unit_monk_3_rus"]},"upgrade_scout_forester_mon":{"age":2,"level":-1,"sbps":["unit_scout_1_mon"]},"upgrade_siege_roller_trigger_sul":{"age":4,"level":-1,"sbps":["unit_springald_3_sul"]},"upgrade_gunpowder_cost_chi":{"age":4,"level":2,"sbps":["unit_nest_of_bees_4_clocktower_chi","unit_nest_of_bees_4_chi"]},"upgrade_ranged_crossbow_drills_fre":{"age":3,"level":-1,"sbps":["unit_crossbowman_3_fre","unit_crossbowman_4_fre","unit_crossbowman_3_fre","unit_crossbowman_4_fre"]},"upgrade_man_at_arms_two_handed_hre":{"age":3,"level":-1,"sbps":["unit_manatarms_2_hre","unit_manatarms_3_hre","unit_manatarms_4_hre"]},"upgrade_stealth_healing_mal":{"age":3,"level":2,"sbps":["unit_handcannon_4_mal","unit_gbeto_2_mal","unit_gbeto_3_mal","unit_gbeto_4_mal"]},"upgrade_siege_crew_training_rus":{"age":4,"level":2,"sbps":["unit_bombard_4_rus","unit_mangonel_3_rus"]},"upgrade_unit_shinobi_4":{"age":4,"level":-1,"sbps":["unit_shinobi_2_jpn"]},"upgrade_siege_adjustable_crossbar_sul":{"age":4,"level":-1,"sbps":["unit_mangonel_3_sul"]},"upgrade_unit_shinobi_3":{"age":3,"level":-1,"sbps":["unit_shinobi_2_jpn"]},"upgrade_ranged_crossbow_stirrups_fre":{"age":4,"level":-1,"sbps":["unit_crossbowman_3_fre","unit_crossbowman_4_fre","unit_crossbowman_3_fre","unit_crossbowman_4_fre"]},"upgrade_mameluke_damage_abb":{"age":3,"level":-1,"sbps":["unit_archer_2_abb","unit_archer_3_abb","unit_archer_4_abb"]},"upgrade_unit_religious_piety_4_mon":{"age":4,"level":-1,"sbps":["unit_monk_3_mon"]},"upgrade_imperial_monk_formation_ott":{"age":1,"level":-1,"sbps":["unit_monk_3_ott"]},"upgrade_keep_companion_upgrade_fre_ha_01":{"age":3,"level":2,"sbps":["unit_rally_manatarms_3_fre_ha_01","unit_rally_manatarms_4_fre_ha_01","unit_rally_horseman_3_fre_ha_01","unit_rally_horseman_4_fre_ha_01"]},"upgrade_age3_war_elephant_elite_sul":{"age":4,"level":-1,"sbps":["unit_war_elephant_3_sul"]},"upgrade_springald_range_rus":{"age":4,"level":-1,"sbps":["unit_springald_3_rus"]},"upgrade_long_spear_jpn":{"age":4,"level":-1,"sbps":["unit_spearman_1_jpn","unit_spearman_2_jpn","unit_spearman_3_jpn","unit_spearman_4_jpn"]},"upgrade_siege_adjustable_crossbar_mon":{"age":4,"level":-1,"sbps":["unit_mangonel_3_mon"]},"upgrade_riveted_chain_armour_hre":{"age":2,"level":2,"sbps":["unit_horseman_2_hre","unit_horseman_3_hre","unit_horseman_4_hre","unit_spearman_1_hre","unit_spearman_2_hre","unit_spearman_3_hre","unit_spearman_4_hre"]},"upgrade_siege_adjustable_crossbar":{"age":4,"level":-1,"sbps":["unit_mangonel_3_abb","unit_mangonel_3_byz","unit_mangonel_3_eng","unit_mangonel_3_fre","unit_mangonel_3_hre","unit_mangonel_3_jpn","unit_mangonel_3_fre","unit_mangonel_3_mal","unit_mangonel_3_hre_ha_01","unit_mangonel_3_ott","unit_mangonel_3_rus"]},"upgrade_gunpowder_damage_chi":{"age":4,"level":-1,"sbps":["unit_handcannon_4_chi"]},"upgrade_unit_religious_piety_4_hre":{"age":4,"level":-1,"sbps":["unit_monk_1_hre","unit_monk_1_hre_ha_01"]},"upgrade_landmark_ranged_crossbow_stirrups_fre":{"age":3,"level":-1,"sbps":["unit_crossbowman_3_fre","unit_crossbowman_4_fre","unit_crossbowman_3_fre","unit_crossbowman_4_fre"]},"upgrade_scout_forester":{"age":2,"level":-1,"sbps":["unit_scout_1_abb","unit_scout_1_abb_ha_01","unit_scout_1_byz","unit_scout_1_chi","unit_scout_1_eng","unit_scout_1_fre","unit_scout_1_hre","unit_scout_1_jpn","unit_scout_1_fre","unit_scout_1_mal","unit_scout_1_hre_ha_01","unit_scout_1_ott","unit_scout_1_rus","unit_scout_1_chi_ha_01"]},"upgrade_saints_veneration_rus":{"age":4,"level":-1,"sbps":["unit_monk_3_rus"]},"upgrade_manatarms_battle_hardened_chi":{"age":4,"level":-1,"sbps":["unit_manatarms_3_chi","unit_manatarms_4_chi"]},"upgrade_unit_religious_herbal_medicine_4_hre":{"age":3,"level":-1,"sbps":["unit_monk_1_hre","unit_monk_1_hre_ha_01"]},"upgrade_mangudai_weapon_damage_mon":{"age":4,"level":-1,"sbps":["unit_horsearcher_2_mon","unit_horsearcher_3_mon","unit_horsearcher_4_mon"]},"upgrade_landmark_siege_elephant_sul":{"age":4,"level":-1,"sbps":["unit_war_elephant_tower_4_sul"]},"upgrade_siege_fined_tuned_guns_rus":{"age":4,"level":-1,"sbps":["unit_bombard_4_rus"]},"upgrade_armor_clad_eng":{"age":3,"level":-1,"sbps":["unit_manatarms_1_eng","unit_manatarms_2_eng","unit_manatarms_3_eng","unit_manatarms_4_eng"]},"upgrade_library_crossbow_upgrade":{"age":4,"level":-1,"sbps":["unit_repeater_crossbowman_2_chi_ha_01","unit_repeater_crossbowman_3_chi_ha_01","unit_repeater_crossbowman_4_chi_ha_01"]},"upgrade_ranged_janissary_guns_ott":{"age":4,"level":-1,"sbps":["unit_handcannon_3_ott","unit_handcannon_4_ott"]},"upgrade_odachi_jpn":{"age":3,"level":2,"sbps":["unit_banner_samurai_melee_2_jpn","unit_samurai_1_jpn","unit_samurai_2_jpn","unit_samurai_3_jpn","unit_samurai_4_jpn"]},"upgrade_scout_forester_sul":{"age":2,"level":-1,"sbps":["unit_scout_1_sul"]},"upgrade_cavalry_chivalry_fre":{"age":2,"level":-1,"sbps":["unit_knight_2_fre","unit_knight_3_fre","unit_knight_4_fre","unit_knight_2_fre","unit_knight_3_fre","unit_knight_4_fre"]},"upgrade_cavalry_cantled_saddle_fre":{"age":3,"level":-1,"sbps":["unit_knight_2_fre","unit_knight_3_fre","unit_knight_4_fre","unit_knight_2_fre","unit_knight_3_fre","unit_knight_4_fre"]},"upgrade_knight_barding_hre":{"age":3,"level":-1,"sbps":["unit_knight_3_hre","unit_knight_4_hre"]},"upgrade_archer_poison_arrow_mal":{"age":3,"level":-1,"sbps":["unit_archer_2_mal","unit_archer_3_mal","unit_archer_4_mal"]},"upgrade_unit_religious_zealous_4_sul":{"age":4,"level":-1,"sbps":["unit_monk_2_sul"]},"upgrade_donso_precision_training_mal":{"age":4,"level":-1,"sbps":["unit_spearman_1_mal","unit_spearman_2_mal","unit_spearman_3_mal","unit_spearman_4_mal"]},"upgrade_siege_roller_trigger_mon":{"age":4,"level":-1,"sbps":["unit_springald_3_mon"]},"upgrade_unit_religious_piety_4_sul":{"age":4,"level":-1,"sbps":["unit_monk_2_sul"]},"upgrade_archer_armor_hre_ha_01":{"age":3,"level":-1,"sbps":["unit_archer_2_hre_ha_01","unit_archer_3_hre_ha_01","unit_archer_4_hre_ha_01"]},"upgrade_unit_religious_herbal_medicine_4_sul":{"age":3,"level":-1,"sbps":["unit_monk_2_sul"]},"upgrade_camel_armor_abb":{"age":4,"level":-1,"sbps":["unit_camel_rider_3_abb","unit_camel_rider_4_abb"]},"upgrade_mil_camel_support_abb":{"age":4,"level":2,"sbps":["unit_camel_archer_2_abb","unit_camel_archer_3_abb","unit_camel_archer_4_abb","unit_camel_rider_3_abb","unit_camel_rider_4_abb"]},"upgrade_sofa_armor_mal":{"age":3,"level":-1,"sbps":["unit_horseman_2_mal","unit_horseman_3_mal","unit_horseman_4_mal"]},"upgrade_unit_religious_piety_4":{"age":4,"level":-1,"sbps":["unit_monk_3_abb","unit_monk_3_cambulance_abb_ha_01","unit_monk_2_byz","unit_monk_3_chi","unit_monk_3_eng","unit_monk_3_fre","unit_monk_buddhist_3_jpn","unit_monk_shinto_3_jpn","unit_monk_3_fre","unit_monk_3_mal","unit_monk_3_ott","unit_monk_3_rus","unit_monk_3_chi_ha_01","unit_monk_shaolin_3_chi_ha_01"]},"upgrade_camel_archer_comp_bow_abb":{"age":2,"level":-1,"sbps":["unit_spearman_1_abb","unit_spearman_2_abb","unit_spearman_3_abb","unit_spearman_4_abb","unit_spearman_1_abb_ha_01","unit_spearman_2_abb_ha_01","unit_spearman_3_abb_ha_01","unit_spearman_4_abb_ha_01"]},"upgrade_unit_religious_herbal_medicine_4":{"age":3,"level":-1,"sbps":["unit_monk_3_abb","unit_monk_3_cambulance_abb_ha_01","unit_monk_2_byz","unit_monk_3_chi","unit_monk_3_eng","unit_monk_3_fre","unit_monk_buddhist_3_jpn","unit_monk_shinto_3_jpn","unit_monk_3_fre","unit_monk_3_mal","unit_monk_3_mon","unit_monk_3_ott","unit_monk_3_rus","unit_monk_3_chi_ha_01","unit_monk_shaolin_3_chi_ha_01"]},"upgrade_horse_archer_mounted_training_rus":{"age":4,"level":-1,"sbps":["unit_horsearcher_3_rus","unit_horsearcher_4_rus"]},"upgrade_reload_drills_chi":{"age":4,"level":-1,"sbps":["unit_bombard_4_chi"]},"upgrade_cavalry_melee_damage_rus":{"age":4,"level":-1,"sbps":["unit_knight_2_rus","unit_knight_3_rus","unit_knight_4_rus"]},"upgrade_landmark_cavalry_chivalry_fre":{"age":3,"level":-1,"sbps":["unit_knight_2_fre","unit_knight_3_fre","unit_knight_4_fre","unit_knight_2_fre","unit_knight_3_fre","unit_knight_4_fre"]}}
+]])
+
+function AbilityCards_OnInit()
+	for level = 1, 6 do 
+		local armor = 2 + math.floor(level/5)
+		table.insert(_ability_cards, {
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "tieshenhujia"..level, -- 卡牌id
+		desc = Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:94", armor), -- 卡牌描述
+		name = Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:95", level),   -- 卡牌名称
+		level = 2,  -- 卡牌级别
+		supportLevel = level, -- 支持级别		
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddArmor(PlayerCard_GetSG(squadCard), nil, armor)
+			end,
+		AllowUpgrade = function(playerId, squadCard, abilityCard)
+			return PlayerMgr_GetLevel(playerId) == abilityCard.supportLevel
+		end,
+	})
+		
+		local damage = 3 + math.floor(math.floor(level/5))
+		table.insert(_ability_cards, {
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "chaojihuoli" .. level, -- 卡牌id
+		desc = Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:98", damage), -- 卡牌描述
+		name = Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:99", level),   -- 卡牌名称
+		level = 2,  -- 卡牌级别
+		supportLevel = level, -- 支持级别		
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddDamage(PlayerCard_GetSG(squadCard), nil, damage)
+			end,
+		AllowUpgrade = function(playerId, squadCard, abilityCard)
+			return PlayerMgr_GetLevel(playerId) == abilityCard.supportLevel
+		end,
+	})
+	end
+	print("ability counts: " .. #_ability_cards)
+	AbilityCards_AddUnitTeches()
+	print("ability counts: " .. #_ability_cards)
+	-- 最后需要重新排序
+	local abilityIds = {}
+	local abilityMappings = {}
+	for _, ab in pairs(_ability_cards) do 
+		table.insert(abilityIds, AbilityCards_GetId(ab))
+		abilityMappings[AbilityCards_GetId(ab)] = ab
+	end
+	
+	table.sort(abilityIds)
+	local tempResult = {}
+	for _, id in pairs(abilityIds) do 
+		table.insert(tempResult, abilityMappings[id])
+	end
+	_ability_cards = tempResult
+	--print("ability counts: " .. #_ability_cards)
+	--Util_PrintTable(_ability_cards)
+end
+
+
+function AbilityCards_AddUnitTeches()
+	--Util_PrintTable(_unit_teches_defined)
+	for ubpName, ubpDesc in pairs(_unit_teches_defined) do 
+		--print(upbDesc)
+		local sbpNames = ubpDesc.sbps
+		local level = tonumber(ubpDesc.level)
+		local age = ubpDesc.age
+		if #sbpNames > 0 then 
+				
+				local ubp = BP_GetUpgradeBlueprint(ubpName)
+				table.insert(_ability_cards, {
+					-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+					cardId = ubpName, -- 卡牌id
+					desc = Util_GetUpgradeHelp(ubp), -- 卡牌描述
+					name =  Util_GetUpgradeName(ubp),   -- 卡牌名称
+					level = level,  -- 卡牌级别
+					ubpName = ubpName,
+					supportLevel = level, -- 支持级别		
+					color = NORMAL_COLOR,  -- 卡牌颜色
+					weight  = "", -- 出现权重
+					sbpNames = sbpNames,
+					executedLimit = 1, -- 可以执行的次数
+					executedCount = 0, -- 执行过的次数
+					age = age,
+					OnNow = function(playerId, idx, squadCard, abilityCard) 
+						Player_CompleteUpgrade(playerId, BP_GetUpgradeBlueprint(abilityCard.ubpName))
+					end,
+					AllowUpgrade = function(playerId, squadCard, abilityCard)
+						local tempSquads = SquadsCards_GetProductionSquads(squadCard)
+						local flag = false 
+						if tempSquads ~= nil and #tempSquads > 0 then 
+							for _, squads in pairs(tempSquads) do 
+								for s, _ in pairs(squads) do 
+									flag = Table_Contains(abilityCard.sbpNames, s)
+									if flag then 
+										break
+									end
+								end
+							end
+						end
+						
+						return not Player_HasUpgrade(playerId, BP_GetUpgradeBlueprint(abilityCard.ubpName)) and flag and Player_GetCurrentAge(playerId) >= abilityCard.age
+					end,
+				})
+
+		end
+	end
+end
+
+
+function AbilityCards_AllowInGameUpgrades(playerId, squadCard)
+	local tempSquads = SquadsCards_GetProductionSquads(squadCard)
+	local flag = false 
+	if tempSquads ~= nil and #tempSquads > 0 then 
+		-- 遍历内置科技
+		for ubpName, ubpDesc in pairs(_unit_teches_defined) do 
+			local searchSbpNames = ubpDesc.sbps
+			-- 玩家不能已升级
+			if not Player_HasUpgrade(playerId, BP_GetUpgradeBlueprint(ubpName)) and tonumber(ubpDesc.level) == -1 then 
+				-- 遍历所有的单位
+				for _, squads in pairs(tempSquads) do 
+					for s, _ in pairs(squads) do 
+						--如果包含该单位，那就可以升级
+						flag = Table_Contains(searchSbpNames, s)
+						if flag then 
+							return flag and Player_GetCurrentAge(playerId) >= ubpDesc.age
+						end
+					end
+				end
+			end
+		end
+	end
+	return flag
+end
+	
+function AbilityCards_Start()
+	
+end
+
+_ability_cards = {
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "lizhan", -- 卡牌id
+		-- desc = "所有单位增加20%的攻击力", -- 卡牌描述
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:66"),
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:67"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddDamage(PlayerCard_GetSG(squadCard), nil, 2)
+			end,
+	}, 
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "kuahua", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:68"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:69"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart =function(playerId, areaType, idx, squadCard, abilityCard, context) 
+
+			SGUtil_AddDamage(PlayerCard_GetSG(squadCard), nil, 3)
+			SGUtil_ModifyMaxHealth(PlayerCard_GetSG(squadCard), nil, -0.15)
+			end,
+	},
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "jisu", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:70"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:71"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddAttackSpeed(PlayerCard_GetSG(squadCard), nil, 0.15)
+			end,
+	}, 
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "jinshe", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:72"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:73"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddDamageRange(PlayerCard_GetSG(squadCard), SQUAD_RANGED, 0.2)
+			end,
+	}, 
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "qianghuazhuangjia", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:74"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:75"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddArmor(PlayerCard_GetSG(squadCard), nil, 1)
+			end,
+	}, 
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "zhongzhuangjia", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:76"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:77"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddArmor(PlayerCard_GetSG(squadCard), nil, 2)
+			SGUtil_AddAttackSpeed(PlayerCard_GetSG(squadCard), nil, -0.1)
+			end,
+	},
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "jiahuagongji", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:78"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:79"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddDamage(PlayerCard_GetSG(squadCard), nil, 3)
+			SGUtil_AddAttackSpeed(PlayerCard_GetSG(squadCard), nil, -0.15)
+			end,
+	},
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "lianti", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:80"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:81"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_ModifyMaxHealth(PlayerCard_GetSG(squadCard), nil, 0.1)
+			end,
+	},
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "huifu", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:82"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:83"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		eventId = nil,
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			abilityCard.eventId = Rule_AddInterval(AbilityCards_AddHealthInterval, 1, squadCard)
+			end,
+		OnCombatEnd = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			--print("----------OnCombatEnd------------")
+			if abilityCard.eventId ~= nil then 
+				Rule_RemoveWithID(abilityCard.eventId)
+				abilityCard.eventId = nil
+			end
+		end
+	},
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "meleearmor", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:84"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:85"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddMeleeArmor(PlayerCard_GetSG(squadCard), nil, 2)
+			end,
+	},
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "rangedarmor", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:86"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:87"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddRangedArmor(PlayerCard_GetSG(squadCard), nil, 2)
+			end,
+	},
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "aoearmor", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:88"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:89"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddAoeArmor(PlayerCard_GetSG(squadCard), nil, 2)
+			end,
+	},
+	
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "upgradeSquads", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:90"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:91"),   -- 卡牌名称
+		level = 2,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = 1, -- 出现权重
+		executedLimit = 1, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		AllowUpgrade = function(playerId, squadCard, abilityCard)
+			return squadCard.level < 5
+		end,
+		OnNow = function(playerId, idx, squadCard, abilityCard) 
+			SquadCards_UpgradeSquadsToNextAge(playerId, squadCard)
+			end,
+	},
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "zhonghuoli", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:92"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:93"),   -- 卡牌名称
+		level = 1,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddDamagePercent(PlayerCard_GetSG(squadCard), nil, 0.1)
+			end,
+	},
+	
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "chaojigongsu", -- 卡牌id
+		desc = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:96"), -- 卡牌描述
+		name = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:97"),   -- 卡牌名称
+		level = 2,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		executedLimit = 0, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		OnCombatStart = function(playerId, areaType, idx, squadCard, abilityCard, context) 
+			SGUtil_AddAttackSpeed(PlayerCard_GetSG(squadCard), nil, 0.3)
+			end,
+	},
+	
+	
+	--需要给单位增加squadUpgradeExt才能给特定单位去升级
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "upgrade_ranged_incendiary", -- 卡牌id
+		desc =  Util_GetUpgradeHelp(UPG.COMMON.UPGRADE_RANGED_INCENDIARY), -- 卡牌描述
+		name = Util_GetUpgradeName(UPG.COMMON.UPGRADE_RANGED_INCENDIARY),   -- 卡牌名称
+		level = 2,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		eventId = nil,
+		executedLimit = 1, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		AllowUpgrade = function(playerId, squadCard, abilityCard)
+			return not Player_HasUpgrade(playerId, UPG.COMMON.UPGRADE_RANGED_INCENDIARY) and  PlayerMgr_GetLevel(playerId) == 6
+		end,
+		OnNow = function(playerId, areaType, idx, squadCard, abilityCard) 
+			Player_CompleteUpgrade(playerId, UPG.COMMON.UPGRADE_RANGED_INCENDIARY)
+			end,
+	},
+	--需要给单位增加squadUpgradeExt才能给特定单位去升级
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "upgrade_tech_university_biology", -- 卡牌id
+		desc =  Util_GetUpgradeHelp(UPG.COMMON.UPGRADE_TECH_UNIVERSITY_BIOLOGY), -- 卡牌描述
+		name = Util_GetUpgradeName(UPG.COMMON.UPGRADE_TECH_UNIVERSITY_BIOLOGY),   -- 卡牌名称
+		level = 2,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		eventId = nil,
+		executedLimit = 1, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		AllowUpgrade = function(playerId, squadCard, abilityCard)
+			return not Player_HasUpgrade(playerId, UPG.COMMON.UPGRADE_TECH_UNIVERSITY_BIOLOGY) and  PlayerMgr_GetLevel(playerId) == 6
+		end,
+		OnNow = function(playerId, areaType, idx, squadCard, abilityCard) 
+			Player_CompleteUpgrade(playerId, UPG.COMMON.UPGRADE_TECH_UNIVERSITY_BIOLOGY) 
+			end,
+	},
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "UPGRADE_MANATARMS_ELITE_ARMY_TACTICS", -- 卡牌id
+		desc =  Util_GetUpgradeHelp(UPG.COMMON.UPGRADE_MANATARMS_ELITE_ARMY_TACTICS), -- 卡牌描述
+		name = Util_GetUpgradeName(UPG.COMMON.UPGRADE_MANATARMS_ELITE_ARMY_TACTICS),   -- 卡牌名称
+		level = 2,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		eventId = nil,
+		executedLimit = 1, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		AllowUpgrade = function(playerId, squadCard, abilityCard)
+			return not Player_HasUpgrade(playerId, UPG.COMMON.UPGRADE_MANATARMS_ELITE_ARMY_TACTICS) and  PlayerMgr_GetLevel(playerId) == 6
+		end,
+		OnNow = function(playerId, areaType, idx, squadCard, abilityCard) 
+			Player_CompleteUpgrade(playerId, UPG.COMMON.UPGRADE_MANATARMS_ELITE_ARMY_TACTICS)
+			end,
+	},
+	{
+		-- eventType = "realTime|roundSessionStart|squadKilled", -- 触发事件类型
+		cardId = "upgrade_siege_chemistry", -- 卡牌id
+		desc =  Util_GetUpgradeHelp(UPG.COMMON.UPGRADE_SIEGE_CHEMISTRY), -- 卡牌描述
+		name = Util_GetUpgradeName(UPG.COMMON.UPGRADE_SIEGE_CHEMISTRY),   -- 卡牌名称
+		level = 2,  -- 卡牌级别
+		color = NORMAL_COLOR,  -- 卡牌颜色
+		weight  = "", -- 出现权重
+		eventId = nil,
+		executedLimit = 1, -- 可以执行的次数
+		executedCount = 0, -- 执行过的次数
+		AllowUpgrade = function(playerId, squadCard, abilityCard)
+			return not Player_HasUpgrade(playerId, UPG.COMMON.UPGRADE_SIEGE_CHEMISTRY) and  PlayerMgr_GetLevel(playerId) == 6
+		end,
+		OnNow = function(playerId, areaType, idx, squadCard, abilityCard) 
+			Player_CompleteUpgrade(playerId, UPG.COMMON.UPGRADE_SIEGE_CHEMISTRY)
+			end,
+	},
+	
+}
+
+
+function AbilityCards_AddHealthInterval(context, squadCard)
+	SGUtil_AddHealth(PlayerCard_GetSG(squadCard), nil, 2)
+end
+
+
+function AbilityCards_GetId(abCard)
+	return abCard.cardId
+end
+
+-- 随机获得卡牌
+function AbilityCards_RandGet(playerId, squadCard, cardCount, level)
+	local hadAbilities = SquadCards_GetAbilityCards(squadCard)
+	local hadAbIds = {}
+	if hadAbilities ~= nil and  #hadAbilities > 0 then 
+		for _, ac in pairs(hadAbilities) do 
+			if ac ~= nil then 
+				table.insert(hadAbIds, ac.cardId)
+			end
+		end
+	end
+	
+	local cards = {}
+	for i, card in pairs(_ability_cards) do 
+		if card.level == level and not Table_Contains(hadAbIds, card.cardId) and (card.AllowUpgrade == nil or card.AllowUpgrade(playerId, squadCard, card)) then 
+			table.insert(cards, card)
+		end
+	end
+	
+	local selectedCards = {}
+	for i = 1, cardCount do 
+		if #cards > 0 then 
+			local rand = World_GetRand(1, #cards)
+			local card = cards[rand]
+			table.insert(selectedCards, card)
+			table.remove(cards, rand)
+		end
+	end
+	
+	return selectedCards
+end
+
+-- 根据卡牌id查找能力卡牌
+function AbilityCards_GetById(cardId)
+	for _, card in pairs(_ability_cards) do 
+		if card.cardId == cardId then 
+			return Clone(card) 
+		end
+	end
+	return 
+end
+
+function AbilityCards_GetLevel(card)
+	return card.level
+end
+
+
+function AbilityCards_GetDesc(card)  
+	return card.desc
+end
+
+function AbilityCards_GetName(card)  
+	return card.name
+end
+
+-- 暂时归属于哪个卡牌
+function AbilityCards_GetTempBelongSquadCardIdx(card) 
+	return card.tempBelongSquadCardIdx
+end
+
+-- 卡牌的执行次数限制
+function AbilityCards_GetExecutedLimit(card)
+	return card.executedLimit
+end
+
+-- 卡牌的已执行次数
+function AbilityCards_GetExecutedCount(card)
+	return card.executedCount
+end
+
+
+function AbilityCards_BuyEvent(card)
+	print("AbilityCards_BuyEvent")
+	card.buyRound = ConfigUtil_GetCurrentRound()
+end
+
+
+function AbilityCards_GetBuyRound(card)
+	return card.buyRound
+end
+
+function AbilityCards_GetEnterRound(card)
+	return card.enterRound
+end
+
+function AbilityCards_EnterEvent(card)
+	print("AbilityCards_EnterEvent")
+	card.enterRound = ConfigUtil_GetCurrentRound()
+end

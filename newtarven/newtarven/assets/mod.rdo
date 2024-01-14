@@ -1,0 +1,28 @@
+<DataWarehouse>
+	<!--newtarven/-->
+	<DataObject Name="newtarven" Type="Mod" Id="11195361230849835818" Version="1">
+		<DataProperty Name="m_description" Type="Object">
+			<DataValue Name="util::ReflectLocString">9678577510895650600</DataValue>
+			<!--newtarven/util::ReflectLocString/-->
+			<DataObject Name="" Type="util::ReflectLocString" Id="9678577510895650600" OwnerId="11195361230849835818">
+				<DataProperty Name="m_modPart2" Type="UInt32" Value="3608822207"/>
+				<DataProperty Name="m_modPart3" Type="UInt32" Value="2448761020"/>
+				<DataProperty Name="m_modPart0" Type="UInt32" Value="3423363536"/>
+				<DataProperty Name="m_modPart1" Type="UInt32" Value="1285378992"/>
+				<DataProperty Name="m_locStringKey" Type="Int32" Value="2"/>
+			</DataObject>
+		</DataProperty>
+		<DataProperty Name="m_name" Type="Object">
+			<DataValue Name="util::ReflectLocString">4538646288483549938</DataValue>
+			<!--newtarven/util::ReflectLocString/-->
+			<DataObject Name="" Type="util::ReflectLocString" Id="4538646288483549938" OwnerId="11195361230849835818">
+				<DataProperty Name="m_modPart2" Type="UInt32" Value="3608822207"/>
+				<DataProperty Name="m_modPart3" Type="UInt32" Value="2448761020"/>
+				<DataProperty Name="m_modPart0" Type="UInt32" Value="3423363536"/>
+				<DataProperty Name="m_modPart1" Type="UInt32" Value="1285378992"/>
+				<DataProperty Name="m_locStringKey" Type="Int32" Value="1"/>
+			</DataObject>
+		</DataProperty>
+	</DataObject>
+</DataWarehouse>
+

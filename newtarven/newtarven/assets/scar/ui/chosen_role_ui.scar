@@ -1,0 +1,248 @@
+import ("util/common_header.scar")
+
+-- 挑选角色UI
+_chosen_role_ui = [[<Grid HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,200"  Width="1920"
+		Orientation="Horizontal" Visibility="{Binding [show], Converter={StaticResource BoolToVis}}" 
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+xmlns:engineSharedEffects="clr-namespace:WPFGUI.Shared.Effects;assembly=EngineUI.Shaders">
+
+	<Grid.Resources>
+		<Style x:Key="TavernButtonStyle" TargetType="Button">
+	        <Setter Property="SnapsToDevicePixels" Value="true" />
+	        <Setter Property="OverridesDefaultStyle" Value="true" />
+	        <Setter Property="HorizontalAlignment" Value="Left" />
+	        <Setter Property="Width" Value="47" />
+	        <Setter Property="Height" Value="47" />
+			<Setter Property="esUtility:AudioAttachedProperty.PreviewMouseLeftButtonUpSound"
+	                Value="sfx_ui_hud_inGame_button_play" />
+	        <Setter Property="Template">
+	            <Setter.Value>
+	                <ControlTemplate TargetType="Button">
+	                    <Border Name="ResourceButton">
+	                        <Grid>
+								<Border Background="{DynamicResource TertiaryColorLightBrush}">
+									<Border>
+										<Border.Background>
+											<RadialGradientBrush Center="0.5,0" GradientOrigin="0.5,0" RadiusX="0.7" RadiusY="0.6">
+										        <GradientStop Offset="0" Color="{DynamicResource TertiaryColorExtraLight}" />
+										        <GradientStop Offset="1" Color="{DynamicResource TertiaryColorExtraLightTransparent}" />
+										    </RadialGradientBrush>
+										</Border.Background>
+									</Border>
+                                </Border>
+								
+	                            <Rectangle Name="Base" Fill="#33505050" />
+	                            
+								<Rectangle Name="Rollover" Fill="{StaticResource ButtonHighlightBrush}" Visibility="Collapsed" />
+	                            
+								<Rectangle Name="Highlight" Fill="#FF93BED7" Visibility="Collapsed" />
+								
+	                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+	                        </Grid>
+	                    </Border>
+	                    <ControlTemplate.Triggers>
+	                        <Trigger Property="IsMouseOver" Value="true">
+	                            <Setter TargetName="Rollover" Property="Visibility" Value="Visible" />
+	                        </Trigger>
+	                        <Trigger Property="IsPressed" Value="true">
+	                            <Setter TargetName="Highlight" Property="Visibility" Value="Visible" />
+	                        </Trigger>
+	                        <Trigger Property="IsEnabled" Value="false">
+								 <Setter TargetName="ResourceButton" Property="Opacity" Value="{StaticResource ButtonDisabledOpacity}" />
+	                        </Trigger>
+	                    </ControlTemplate.Triggers>
+	                </ControlTemplate>
+	            </Setter.Value>
+	        </Setter>
+	    </Style>	
+		
+		<DropShadowEffect x:Key="DropShadow" BlurRadius="0.5" ShadowDepth="1.5"  />
+		
+		<DataTemplate x:Key="TestTemplate" >
+			<Button Content="hello template">
+					
+			</Button>
+		</DataTemplate>
+	
+		<DataTemplate x:Key="Role">
+			<Button Width="100"
+					Height="100"
+					Command="{Binding [chosenCommand]}"
+					CommandParameter="{Binding [chosenCommandParameter]}"
+					Style="{StaticResource TavernButtonStyle}"
+					IsEnabled="{Binding [canSelect]}"
+					>
+				<Button.Content>
+					<Border Margin="2,2,2,0" BorderThickness="2" BorderBrush="{Binding [Color]}"
+					VerticalAlignment="Top">
+						<Grid>
+							<Image Width="100"
+									Height="100"
+									Source="{Binding [icon]}"/>
+							<TextBlock 
+									VerticalAlignment="Bottom"
+									HorizontalAlignment="Center"
+									Style="{StaticResource HUDWhiteBaseTextBlock14ptStyle}"
+									Text="{Binding [name]}"
+			                		Effect="{StaticResource DropShadow}"
+									/>
+						</Grid>
+					</Border>		
+				</Button.Content>
+			</Button>
+		</DataTemplate>
+		
+		<DataTemplate x:Key="Roles">
+			<ItemsControl Name="ShowRoles" 
+					ItemsSource="{Binding [roles]}"
+					HorizontalAlignment="Left"
+					ItemTemplate="{StaticResource Role}">
+				<ItemsControl.ItemsPanel>
+					<ItemsPanelTemplate>
+						<StackPanel Orientation="Horizontal" FlowDirection="LeftToRight"/>
+					</ItemsPanelTemplate>
+				</ItemsControl.ItemsPanel>
+			</ItemsControl>
+		</DataTemplate>
+	</Grid.Resources>
+		
+
+	
+	<Grid.RowDefinitions>
+		<RowDefinition Height="50" />	
+		<RowDefinition Height="110" />	
+		<RowDefinition Height="200" />
+	</Grid.RowDefinitions>	
+	<StackPanel Grid.Row="0" HorizontalAlignment="Center">
+		<TextBlock Text="请选择角色" HorizontalAlignment="Center" Style="{StaticResource HUDWhiteBaseTextBlock18ptStyle}" Effect="{StaticResource DropShadow}" ></TextBlock>
+		<TextBlock Text="{Binding [time]}" HorizontalAlignment="Center" Style="{StaticResource HUDWhiteBaseTextBlock18ptStyle}" Effect="{StaticResource DropShadow}" ></TextBlock>
+	</StackPanel>
+	<StackPanel Grid.Row="1" HorizontalAlignment="Center">
+		<ContentControl Content="{Binding}" ContentTemplate="{StaticResource Roles}" HorizontalAlignment="Center" />
+	</StackPanel>
+	<StackPanel Grid.Row="2" HorizontalAlignment="Center" >
+		<TextBlock VerticalAlignment="Top"  HorizontalAlignment="Center" Style="{StaticResource HUDWhiteBaseTextBlock18ptStyle}" 
+				Text="{Binding [selected][desc]}"
+				/>	
+	</StackPanel>
+</Grid>
+
+]]
+
+
+_chosen_role_ui_data = {
+	name = "chosen_role_ui",
+	context = {
+		show = true,
+		roles = {},
+		selected = {
+			desc = "",
+			name = "",
+		}
+	},
+	timer = "CHOSEN_ROLE_TIMER",
+	waitSec = 1,
+}
+
+
+Core_RegisterModule("ChosenRoleUI")
+
+function ChosenRoleUI_OnInit()
+	
+end
+
+function ChosenRoleUI_Start()
+	ChosenRoleUI_InitData()
+	Timer_Start(_chosen_role_ui_data.timer, _chosen_role_ui_data.waitSec)
+	Rule_AddInterval(ChosenRoleUI_Interval, 1)
+	
+	Network_RegisterEvent("ChosenRoleUI_ChosenCommandNtw")
+	
+	UI_AddChild("ScarDefault", "XamlPresenter", _chosen_role_ui_data.name, { IsHitTestVisible = true, Xaml = _chosen_role_ui, DataContext = UI_CreateDataContext(_chosen_role_ui_data.context) })
+end
+
+-- 更新UI
+function ChosenRoleUI_UpdateUI()
+	UI_SetDataContext(_chosen_role_ui_data.name, _chosen_role_ui_data.context)
+end
+
+-- 初始化数据
+function ChosenRoleUI_InitData()
+	_chosen_role_ui_data.context.roles = TavernRole_GetAllRoles()
+	for i, role in pairs(_chosen_role_ui_data.context.roles) do
+		role.chosenCommand = UI_CreateCommand("ChosenRoleUI_ChosenCommand")
+		role.chosenCommandParameter = role.id
+		role.Color = "#FFDB88"
+		role.canSelect = true
+	end
+end
+
+
+-- chosenCommand
+function ChosenRoleUI_ChosenCommand(id)
+	
+	local role = TavernRole_GetRoleById(id) 
+	if role ~= nil then 
+		Network_CallEvent("ChosenRoleUI_ChosenCommandNtw", id)
+	end
+end
+
+
+function ChosenRoleUI_ChosenCommandNtw(playerId, roleId)
+	print("ChosenRoleUI_ChosenCommandNtw" .. Player_GetID(playerId))
+	local player = Core_GetPlayersTableEntry(playerId)
+	local role = TavernRole_GetRoleById(roleId) 
+	print("ChosenRoleUI_ChosenCommandNtw" .. Player_GetID(localPlayer.id))
+	if player.id == localPlayer.id then 
+		--print("ChosenRoleUI_ChosenCommandNtw is local")
+		_chosen_role_ui_data.context.selected = {
+			desc = role.desc,
+			name = role.name
+		}
+		role.canSelect = false
+		local oldRoleId = player.roleId 
+		if oldRoleId ~= nil and oldRoleId ~= roleId then 
+			local oldRole = TavernRole_GetRoleById(oldRoleId) 
+			oldRole.canSelect = true
+		end
+		ChosenRoleUI_UpdateUI()
+	end
+	
+	player.roleId = roleId
+	player.role = role
+end
+
+
+function ChosenRoleUI_GetTimer()
+	return _chosen_role_ui_data.timer
+end
+
+function ChosenRoleUI_GetLeftTime()
+	local sec = Timer_GetRemaining(_chosen_role_ui_data.timer)
+	return Util_FormatSecs(sec)
+end
+
+-- 刷新定时器
+function ChosenRoleUI_Interval()
+	_chosen_role_ui_data.context.time = ChosenRoleUI_GetLeftTime()
+	--print("interval ")
+	if Timer_GetRemaining(_chosen_role_ui_data.timer) <= 0 then 
+		--print("interval end")
+		Rule_Remove(ChosenRoleUI_Interval)
+		for i, player in pairs(PLAYERS) do 
+			-- 为没有选择的玩家随机选择一个
+			if player.roleId == nil then 
+				local role = TavernRole_RandSelectOne()
+				player.roleId = role.id
+			end
+		end
+		Timer_End(ChosenRoleUI_GetTimer())
+
+		-- 隐藏该UI
+		_chosen_role_ui_data.context.show = false
+		-- 轮次开始
+		TavernRound_RoundStart()
+	end
+	ChosenRoleUI_UpdateUI()
+end

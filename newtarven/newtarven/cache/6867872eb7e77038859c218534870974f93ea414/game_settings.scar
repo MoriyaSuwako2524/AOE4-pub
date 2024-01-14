@@ -1,0 +1,21 @@
+import("util/common_header.scar")
+
+
+Core_RegisterModule("GS")
+
+_gs_sim_rate = 0
+
+function GS_OnInit()
+	_gs_sim_rate = Game_GetSimRate()
+end
+
+
+function GS_OnRoundStart()
+	Misc_SetSimRate(_gs_sim_rate)
+end
+
+
+function GS_OnDepoymentEnd()
+	-- 大概是1.5倍速,只有在单人战役时才生效
+	Misc_SetSimRate(12.0)
+end

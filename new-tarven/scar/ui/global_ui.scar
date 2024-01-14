@@ -1,0 +1,39 @@
+import ("util/common_header.scar")
+import ("cards/squad_cards.scar")
+
+Core_RegisterModule("GlobalUI")
+
+-- 全局UI
+_global_ui = [[<Grid HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,0" 
+		xmlns:engineHUDPages="clr-namespace:WPFGUI.HUD.Pages;assembly=EngineUI"
+		Orientation="Horizontal" 
+		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+		Height="{Binding ActualHeight, ElementName=TheHUDPage}" Width="{Binding ActualWidth, ElementName=TheHUDPage}"
+		xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		xmlns:esControls="clr-namespace:WPFGUI.Shared.Controls;assembly=EngineUI"		
+		xmlns:esUtility="clr-namespace:WPFGUI.Shared.Utility;assembly=EngineUI"
+		xmlns:engineSharedEffects="clr-namespace:WPFGUI.Shared.Effects;assembly=EngineUI.Shaders"
+		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">	
+<Button  Content="{Binding [viewBtnTxt]}" Width="50" 
+			Margin="0,5,0,0" Height="30" Style="{StaticResource HUDPrimaryRaisedTextButton}"
+									 FontSize="14" 
+									Command="{Binding [viewBtnCmd]}"  HorizontalAlignment="Right" VerticalAlignment="Top"/>	
+									
+									<Grid>
+		]]
+
+_global_ui_data = {
+	name = "global_ui",
+	context = {
+		show = true,
+		viewBtnTxt = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:49"),
+		viewBtnCmd = UI_CreateCommand("HelpUI_Show"),
+	},
+	
+}
+
+function GlobalUI_Start()
+		UI_AddChild("ScarDefault", "XamlPresenter", _global_ui_data.name, 
+		{ IsHitTestVisible = true, Xaml = _global_ui, DataContext = UI_CreateDataContext(_global_ui_data.context) })
+end

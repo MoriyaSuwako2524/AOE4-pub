@@ -1,0 +1,695 @@
+import("util/common_header.scar")
+import("gameplay/ground.scar")
+
+Core_RegisterModule("BattleAI")
+
+
+function BattleAI_OnDeploymentEnd()
+	BattleAI_InitSquadGroup()
+end
+
+
+function BattleAI_InitSquadGroup()
+	
+	local initFlag = false
+	for _, player in pairs(PLAYERS) do 
+		if not player.isHuman then 
+			initFlag = true 
+			break
+		end
+	end
+	
+	if not ConfigUtil_IsAutoCombat() and not initFlag then 
+		return 
+	end
+	
+	for i, player in pairs(PLAYERS) do
+		if Player_IsAlive(player.id) then 
+			local ncSg = SGroup_CreateIfNotFound("ncSgTeam" .. Player_GetID(player.id))	
+			SGroup_Clear(ncSg)
+			local pcSg = SGroup_CreateIfNotFound("pcSgTeam" .. Player_GetID(player.id))	
+			SGroup_Clear(pcSg)
+			local qbSg = SGroup_CreateIfNotFound("qbSgTeam" .. Player_GetID(player.id))	
+			SGroup_Clear(qbSg)
+			local bbSg = SGroup_CreateIfNotFound("bbSgTeam" .. Player_GetID(player.id))	
+			SGroup_Clear(bbSg)
+			local gjsSg = SGroup_CreateIfNotFound("gjsSgTeam" .. Player_GetID(player.id))	
+			SGroup_Clear(gjsSg)
+			local nsSg = SGroup_CreateIfNotFound("nsSgTeam" .. Player_GetID(player.id))	
+			SGroup_Clear(nsSg)
+			local ycSg = SGroup_CreateIfNotFound("ycSgTeam" .. Player_GetID(player.id))	
+			SGroup_Clear(ycSg)
+			local hqSg = SGroup_CreateIfNotFound("hqSgTeam" .. Player_GetID(player.id))	
+			SGroup_Clear(hqSg)
+			local cfzSg = SGroup_CreateIfNotFound("cfzSgTeam" .. Player_GetID(player.id))	
+			SGroup_Clear(cfzSg)
+			local allSg = SGroup_CreateIfNotFound("allSgTeam".. Player_GetID(player.id))
+			SGroup_Clear(cfzSg)
+			
+			
+			-- if AUTO_COMBAT or not player.isHuman then 
+			SGroup_AddGroup(ncSg, Player_GetSquadsFromType(player.id, "handcannon"))
+			SGroup_AddGroup(ncSg, Player_GetSquadsFromType(player.id, "bombard"))
+			SGroup_AddGroup(ncSg, Player_GetSquadsFromType(player.id, "culverin"))
+			SGroup_AddGroup(ncSg, Player_GetSquadsFromType(player.id, "springald"))
+			
+			SGroup_AddGroup(pcSg, Player_GetSquadsFromType(player.id, "scar_trebuchet"))
+			SGroup_AddGroup(pcSg, Player_GetSquadsFromType(player.id, "nest_of_bees"))
+			SGroup_AddGroup(pcSg, Player_GetSquadsFromType(player.id, "mangonel"))
+			SGroup_AddGroup(pcSg, Player_GetSquadsFromType(player.id, "ribauldequin"))
+			SGroup_AddGroup(pcSg, Player_GetSquadsFromType(player.id, "trebuchet"))
+			
+			-- 近战骑兵
+			local tempSg = Player_GetSquadsFromType(player.id, "cavalry")
+			SGroup_Filter(tempSg, "ranged", FILTER_REMOVE)
+			SGroup_Filter(tempSg, "mehter_ott", FILTER_REMOVE)
+			SGroup_Filter(tempSg, "khan", FILTER_REMOVE)
+			SGroup_Filter(tempSg, "leader", FILTER_REMOVE)
+			SGroup_AddGroup(qbSg, tempSg)
+			
+			SGroup_AddGroup(cfzSg, Player_GetSquadsFromType(player.id, "khan"))
+			SGroup_AddGroup(cfzSg, Player_GetSquadsFromType(player.id, "scar_mehter"))
+			SGroup_AddGroup(cfzSg, Player_GetSquadsFromType(player.id, "mehter_ott"))
+			SGroup_AddGroup(cfzSg, Player_GetSquadsFromType(player.id, "monk"))
+			SGroup_AddGroup(cfzSg, Player_GetSquadsFromType(player.id, "leader"))
+			
+			
+			-- 弓箭手
+			SGroup_AddGroup(gjsSg, Player_GetSquadsFromType(player.id, "archer"))
+			SGroup_AddGroup(gjsSg, Player_GetSquadsFromType(player.id, "repeater_crossbow"))
+			SGroup_AddGroup(gjsSg, Player_GetSquadsFromType(player.id, "mehter_ott"))
+			SGroup_AddGroup(gjsSg, Player_GetSquadsFromType(player.id, "monk"))
+			SGroup_AddGroup(gjsSg, Player_GetSquadsFromType(player.id, "khan"))
+			SGroup_AddGroup(gjsSg, Player_GetSquadsFromType(player.id, "villager"))
+			
+			-- 弩手
+			SGroup_AddGroup(nsSg, Player_GetSquadsFromType(player.id, "crossbowman"))
+			SGroup_AddGroup(nsSg, Player_GetSquadsFromType(player.id, "crossbow"))
+			
+			-- 远程 弓箭手和弩手
+			SGroup_AddGroup(ycSg, nsSg)
+			SGroup_AddGroup(ycSg, gjsSg)
+			
+			-- 
+			SGroup_AddGroup(bbSg, Player_GetSquadsFromType(player.id, "spearman"))
+			SGroup_AddGroup(bbSg, Player_GetSquadsFromType(player.id, "manatarms"))
+			SGroup_AddGroup(bbSg, Player_GetSquadsFromType(player.id, "javelin"))
+			SGroup_AddGroup(bbSg, Player_GetSquadsFromType(player.id, "musofadi_warrior"))
+			SGroup_AddGroup(bbSg, Player_GetSquadsFromType(player.id, "landsknecht"))
+			
+			
+			-- 火枪
+			SGroup_AddGroup(bbSg, Player_GetSquadsFromType(player.id, "culverin"))
+			SGroup_AddGroup(bbSg, Player_GetSquadsFromType(player.id, "grenadier"))
+			
+			SGroup_AddGroup(allSg, Player_GetSquads(player.id))
+			
+			player.pcSg = pcSg
+			player.ncSg = ncSg
+			player.bbSg = bbSg
+			player.nsSg = nsSg 
+			player.qbSg = qbSg
+			player.gjsSg = gjsSg
+			player.ycSg = ycSg
+			player.hqSg = hqSg
+			player.cfzSg = cfzSg
+			player.allSg = allSg
+
+		end
+	end
+	
+end
+
+
+-- 初始化每秒钟的玩家自己和对手的各类单位数量
+function BattleAI_InitEnemySquadCount()
+	local playerA = nil 
+	local playerB = nil
+	
+	
+	for i, player in pairs(PLAYERS) do 
+		player.pcSgCount = SGroup_CountSpawned(player.pcSg)
+		player.ncSgCount = SGroup_CountSpawned(player.ncSg)
+		player.bbSgCount = SGroup_CountSpawned(player.bbSg)
+		player.nsSgCount = SGroup_CountSpawned(player.nsSg) 
+		player.qbSgCount = SGroup_CountSpawned(player.qbSg)
+		player.gjsSgCount = SGroup_CountSpawned(player.gjsSg)
+		player.ycSgCount = SGroup_CountSpawned(player.ycSg)
+		player.hqSgCount = SGroup_CountSpawned(player.hqSg)
+	end
+end
+
+
+
+-- 弩车单位列表
+function BattleAI_GetSquadTypeOfNc()
+	return {"handcannon", "bombard", "culverin", "springald"}
+end
+-- 拍车单位列表
+function BattleAI_GetSquadTypeOfPc()
+	return {"scar_trebuchet", "nest_of_bees", "mangonel", "ribauldequin", "trebuchet"}
+end
+
+function BattleAI_SquadIsNc(sid)
+	local ts = {"handcannon", "bombard", "culverin", "springald"}
+	for _, t in pairs(ts) do 
+		if Squad_IsOfType(sid, t) then 
+			return true
+		end
+	end
+	return false
+end
+
+function BattleAI_SquadIsPc(sid)
+	local ts = {"scar_trebuchet", "nest_of_bees", "mangonel", "ribauldequin", "trebuchet"}
+	for _, t in pairs(ts) do 
+		if Squad_IsOfType(sid, t) then 
+			return true
+		end
+	end
+	return false
+end
+
+-- 是否是步兵
+function BattleAI_SquadIsBb(sid)
+	return Squad_IsOfType(sid, "landsknecht")  or Squad_IsOfType(sid, "spearman") or Squad_IsOfType(sid, "manatarms") or Squad_IsOfType(sid, "musofadi_warrior") or Squad_IsOfType(sid, "javelin")
+end
+
+-- 是否是骑兵
+function BattleAI_SquadIsQb(sid)
+	return Squad_IsOfType(sid, "cavalry") and not Squad_IsOfType(sid, "ranged") and not Squad_IsOfType(sid, "leader")  and not Squad_IsOfType(sid, "khan")  and not Squad_IsOfType(sid, "scar_mehter")
+end
+
+-- 是否是辅助单位
+function BattleAI_SquadIsFz(sid)
+	return Squad_IsOfType(sid, "leader")  or Squad_IsOfType(sid, "khan")  or Squad_IsOfType(sid, "mehter_ott") or Squad_IsOfType(sid, "monk")
+end
+
+-- 是否是纯辅助单位
+function BattleAI_SquadIsCfz(sid)
+	return Squad_IsOfType(sid, "scar_mehter") or Squad_IsOfType(sid, "monk")  or Squad_IsOfType(sid, "leader")
+end
+
+-- 是否是弩手
+function BattleAI_SquadIsNs(sid)
+	return Squad_IsOfType(sid, "crossbowman") or Squad_IsOfType(sid, "crossbow") 
+end
+
+-- 是否是弓箭手
+function BattleAI_SquadIsGjs(sid)
+	return Squad_IsOfType(sid, "scar_horsearcher") or Squad_IsOfType(sid, "archer") or Squad_IsOfType(sid, "repeater_crossbow") or Squad_IsOfType(sid, "khan")  or Squad_IsOfType(sid, "leader")
+end
+
+
+-- 是否时火枪
+function BattleAI_SquadIsHq(sid) 
+	return Squad_IsOfType(sid, "culverin") or Squad_IsOfType(sid, "grenadier") or Squad_IsOfType(sid, "villager")
+end
+
+
+
+
+-- 单位攻击规则
+sid_attacked_rule = {
+	{
+		-- 弩车
+		squadTypeFunc = function(sid) return BattleAI_SquadIsNc(sid) end,
+		priorities = {
+			{
+				func = function(player, enemy) return enemy.pcSgCount > 0 end,
+				attckedSg = "pcSg",
+				factor = 2
+			},
+			{
+				func = function(player, enemy) return enemy.ncSgCount > 0 end,
+				attckedSg = "ncSg",
+			},
+		},
+		sgCountFunc = function(player) return SGroup_CountSpawned(player.ncSg) end
+	},
+	{
+		-- 拍车
+		squadTypeFunc = function(sid) return BattleAI_SquadIsPc(sid) end,
+		priorities = {
+			{
+				func = function(player, enemy) return enemy.bbSgCount > enemy.ycSgCount or enemy.bbSgCount > 10 end,
+				attckedSg = "bbSg",
+			},
+			{
+				func = function(player, enemy) return enemy.ycSgCount > 0 end,
+				attckedSg = "ycSg",
+			},
+		},
+		sgCountFunc = function(player) return SGroup_CountSpawned(player.pcSg) end
+	},
+	{   -- 骑兵
+		squadTypeFunc = function(sid) return BattleAI_SquadIsQb(sid) end,
+		priorities = {
+			{
+				func = function(player, enemy) return enemy.pcSgCount > 0 and player.ncSgCount < 1 end,
+				attckedSg = "pcSg",
+				factor = 3
+			},
+			{
+				func = function(player, enemy) return  player.pcSgCount > 0 and enemy.ncSgCount > 0 and player.ncSgCount < 1 end,
+				attckedSg = "ncSg",
+				factor = 2
+			},
+			{
+				func = function(player, enemy) return enemy.ycSgCount > 0 end,
+				attckedSg = "ycSg",
+			},
+			{
+				func = function(player, enemy) return enemy.qbSgCount > 0 end,
+				attckedSg = "qbSg",
+			},
+		},
+		sgCountFunc = function(player) return SGroup_CountSpawned(player.qbSg) end
+	},
+	{
+		-- 步兵
+		squadTypeFunc = function(sid) return BattleAI_SquadIsBb(sid) end,
+		priorities = {
+			{
+				func = function(player, enemy) return enemy.pcSgCount > 0 and player.ncSgCount < 1 and player.qbSgCount < 1 end,
+				attckedSg = "pcSg",
+				factor = 4
+			},
+			{
+				func = function(player, enemy) return enemy.qbSgCount > 0 end,
+				attckedSg = "qbSg",
+				factor = 2
+			},
+			{
+				func = function(player, enemy) return enemy.nsSgCount > 0 end,
+				attckedSg = "nsSg",
+			},
+		},
+		sgCountFunc = function(player) return SGroup_CountSpawned(player.bbSg) end
+	},
+	{
+		squadTypeFunc = function(sid) return BattleAI_SquadIsGjs(sid) end,
+		priorities = {
+			{
+				func = function(player, enemy) return enemy.qbSgCount > 0 and player.qbSgCount < 1 and player.bbSgCount < 1 end,
+				attckedSg = "qbSg",
+			},
+			{
+				func = function(player, enemy) return enemy.bbSgCount > 0 and player.qbSgCount > 0  end,
+				attckedSg = "bbSg",
+			},
+			{
+				func = function(player, enemy) return enemy.ycSgCount > 0 end,
+				attckedSg = "ycSg",
+			},
+		},
+		sgCountFunc = function(player) return SGroup_CountSpawned(player.gjsSg) end
+	},
+	{
+		squadTypeFunc = function(sid) return BattleAI_SquadIsNs(sid) end,
+		priorities = {
+			{
+				func = function(player, enemy) return enemy.qbSgCount > 0 and player.qbSgCount < 1 and player.bbSgCount < 1  end,
+				attckedSg = "qbSg",
+			},
+			{
+				func = function(player, enemy) return enemy.bbSgCount > 0 end,
+				attckedSg = "bbSg",
+			},
+			{
+				func = function(player, enemy) return enemy.ycSgCount > 0 end,
+				attckedSg = "ycSg",
+			},
+		},
+		sgCountFunc = function(player) return SGroup_CountSpawned(player.nsSg) end
+	},
+	{
+		squadTypeFunc = function(sid) return BattleAI_SquadIsHq(sid) end,
+		priorities = {
+			{
+				func = function(player, enemy) return enemy.qbSgCount > 0 end,
+				attckedSg = "qbSg",
+			},
+			{
+				func = function(player, enemy) return enemy.bbSgCount > 0 end,
+				attckedSg = "bbSg",
+			},
+			{
+				func = function(player, enemy) return enemy.ycSgCount > 0 end,
+				attckedSg = "ycSg",
+			},
+		},
+		sgCountFunc = function(player) return SGroup_CountSpawned(player.hqSg) end
+	},
+}
+
+-- 单位攻击目标
+sid_attacked = {
+	
+}
+
+
+
+ROUND_COMBAT_TIME = 0
+
+function BattleAI_OnCombatStart()
+	sid_attacked = {
+	}
+	Rule_AddOneShot(BattleAI_RuleCombat, 3)
+end
+
+function BattleAI_RuleCombat()
+	ROUND_COMBAT_TIME = World_GetGameTime()
+	Rule_AddInterval(BattleAI_Combat, 1)
+	--[[
+	if enable_poison_circle then 
+		for i, player in pairs(PLAYERS) do 
+			BattleAIify_SightRadius(player.sg, 0.1)
+		end
+	end
+	--]]
+end
+
+function BattleAI_OnRoundSessionEnd()
+	Rule_Remove(BattleAI_Combat)
+end
+
+
+function BattleAI_Combat()
+	--print("test....7")
+	if ConfigUtil_IsAutoCombat() then 
+		--print("test....8")
+		BattleAI_InitEnemySquadCount()
+		-- 开启了自动战斗
+		for i, player in pairs(PLAYERS) do 
+			if Player_IsAlive(player.id) then 
+				SGroup_ForEach(Player_GetSquads(player.id), BattleAI_AutoCombat)
+			end
+			
+		end
+		
+	else
+		local hasAi = false
+		for i, player in pairs(PLAYERS) do 
+			if not player.isHuman then 
+				hasAi = true 				
+			end
+		end
+		if hasAi then
+			BattleAI_InitEnemySquadCount()
+		end 
+		
+		-- 开启了自动战斗
+		for i, player in pairs(PLAYERS) do 
+			if not player.isHuman then 
+				SGroup_ForEach(Player_GetSquads(player.id), BattleAI_AutoCombat)
+			end
+		end
+	end
+end
+
+function BattleAI_TryAttack(sid)  
+	if not Squad_IsValid(Squad_GetID(sid)) or not Squad_IsAlive(sid) and World_OwnsSquad(sid) then 
+		return
+	end 
+	
+	if Squad_IsOfType(sid, "trade_cart") then 
+		return
+	end
+	
+	if BattleAI_SquadIsCfz(sid) and (World_GetGameTime() - ROUND_COMBAT_TIME) <= 3 then 
+		return
+	end
+	
+	local ssid = Squad_GetID(sid)
+	local sg = SGroup_CreateIfNotFound("attackSg")
+	SGroup_Clear(sg)
+	SGroup_Add(sg, sid)
+	
+	local bpName = BP_GetName(Squad_GetBlueprint(sid))
+	
+	local isAttacked = false 
+	
+	-- local pcPriority = World_GetRand(1, 10)
+	local player = Core_GetPlayersTableEntry(Squad_GetPlayerOwner(sid))
+	
+	local world_center = Ground_GetCenterPos(player.ground)
+	local enemy = PlayerMgr_GetEnemy(player.id)
+	if enemy == nil then 
+		return
+	end
+	
+	local position = nil
+	
+	if SGroup_Count(Player_GetSquads(enemy.id)) > 0 then 
+		position = Util_DismissErrors(nil, function() return SGroup_GetPosition(Player_GetSquads(enemy.id)) end)
+		
+	end
+	if position == nil then 
+		position = world_center
+	end
+	
+	local attackerSsid = "ssid" .. ssid
+	
+	if sid_attacked[attackerSsid] ~= nil and SGroup_CountSpawned(sid_attacked[attackerSsid]) > 0 then 
+		Cmd_Attack(sg, sid_attacked[attackerSsid])
+		SGroup_Clear(sg)
+		return
+	end
+	
+	
+	local sgCount = 0
+	local rule = nil 
+	for _, attackRule in pairs(sid_attacked_rule) do 
+		if attackRule.squadTypeFunc(sid) then 
+			rule = attackRule.priorities
+			sgCount = attackRule.sgCountFunc(player)
+			break
+		end
+	end
+	
+	if rule == nil then 
+		
+		
+		-- not Squad_IsAttackMoving(sid) and  not Squad_IsAttacking(sid, 5)
+		
+		if not isAttacked and BattleAI_SquadIsCfz(sid) and not SGroup_IsAttackMoving(sg, ANY) then
+			local p = nil
+			
+			if Player_GetSquadCount(player.id) > SGroup_Count(player.cfzSg)  then 
+				p = Util_DismissErrors(nil, function() return SGroup_GetPosition(Player_GetSquads(player.id)) end)
+			end
+			
+			if p == nil then 
+				p = world_center
+			end
+			
+			local sp = Squad_GetPosition(sid)
+			
+			if World_DistancePointToPoint(sp, p) > World_DistancePointToPoint(sp, position) then 
+				p = position
+			end
+			--Util_PrintTable(p)
+			Cmd_AttackMove(sg, p, false, nil, 10000)
+			--Cmd_Attack(sg, enemy.allSg)
+			isAttacked = true
+		end
+		
+		--  and not Squad_IsAttackMoving(sid) and not Squad_IsAttacking(sid, 5)
+		if not isAttacked and not SGroup_IsAttackMoving(sg, ANY)  then 
+			if string.find(bpName, "_monk_")  ~= nil then 
+				--Util_PrintTable(position)
+			end
+	
+			Cmd_AttackMove(sg, position, false, nil, 10000)
+			-- Cmd_Attack(sg, enemy.allSg)
+		end
+		
+		SGroup_Clear(sg)
+		return 
+	end
+	
+	local rMax = #rule
+	local gotoNext = false
+	for i, r in pairs(rule) do 
+		-- 如果满足当前规则，但是发现自己兵力比较足，则尝试将兵力分配给下一个规则的(1.2:1)
+		if r.func(player, enemy) then
+			local forceAttack = true
+			-- 最多往下一级
+			if i < rMax and not gotoNext  then 
+				-- 当前兵种兵力需达到的数量
+				local enemySgCount = SGroup_CountSpawned(enemy[r.attckedSg])
+				local factor = r.factor
+				if factor == nil then 
+					factor = 1.2 
+				end
+				local countOfPercent = math.floor(enemySgCount * 1.2)
+				if countOfPercent < sgCount then 
+					-- 判断是否继续攻击这一组
+					if World_GetRand(1, sgCount) > countOfPercent then 
+						for j = i+1, rMax do 
+							local nextRule = rule[j]
+							if nextRule.func(player, enemy) then 
+								Cmd_Attack(sg, enemy[nextRule.attckedSg])
+								isAttacked = true
+								sid_attacked[attackerSsid] = enemy[nextRule.attckedSg]
+								forceAttack = false
+								break
+							end
+						end
+					end
+				end
+			end
+			if forceAttack then 
+				Cmd_Attack(sg, enemy[r.attckedSg])
+				isAttacked = true
+				sid_attacked[attackerSsid] = enemy[r.attckedSg]
+				break
+			else
+				break
+			end
+		end
+	end
+	
+	
+	--  and not Squad_IsAttackMoving(sid) and not Squad_IsAttacking(sid, 5)
+	if not isAttacked and not SGroup_IsAttackMoving(sg, ANY)  then 
+
+		Cmd_AttackMove(sg, position, false, nil, 10000)
+		-- Cmd_Attack(sg, enemy.allSg)
+	end
+	
+	SGroup_Clear(sg)
+end
+
+
+
+function BattleAI_AutoCombat(gid, idx, sid)
+	BattleAI_TryAttack(sid)
+	--[[
+	if not Squad_IsValid(Squad_GetID(sid)) or not Squad_IsAlive(sid) and World_OwnsSquad(sid) then 
+		return
+	end 
+	local sg = SGroup_CreateIfNotFound("attackSg")
+	SGroup_Add(sg, sid)
+	
+	local ssid = Squad_GetID(sid)
+	
+	local isAttacked = false 
+	local types = BattleAI_GetSquadTypeOfNc()
+	
+	-- local pcPriority = World_GetRand(1, 10)
+	local player = Core_GetPlayersTableEntry(Squad_GetPlayerOwner(sid))
+	local enemy = BattleAI_GetHasSquadsEnemyPlayer(player)
+	if enemy == nil then 
+		return
+	end
+	for i, t in pairs(types) do 
+		if Squad_IsOfType(sid, t) then
+			-- 先获取攻击目标
+			
+			
+			-- 优先攻击弩车
+			if enemy.pcSgCount > 0 then 
+				Cmd_Attack(sg, enemy.pcSg)
+				isAttacked = true
+			elseif enemy.ncSgCount > 0 then 
+				-- 再攻击拍车
+				Cmd_Attack(sg, enemy.ncSg)
+				isAttacked = true
+			end
+			break
+		end
+	end
+	
+	if BattleAI_SquadIsQb(sid) then 
+		-- 骑兵优先拍车(不能有弩车)
+		if enemy.pcSgCount > 0 and player.ncSgCount < 1 then 
+			Cmd_Attack(sg, enemy.pcSg)
+			isAttacked = true
+		elseif player.pcSgCount > 0 and enemy.ncSgCount > 0 and player.ncSgCount < 1 then 
+			-- 如果自己有拍车无弩车，对手有弩车，那就攻击弩车
+			Cmd_Attack(sg, enemy.ncSg)
+			isAttacked = true
+		elseif enemy.ycSgCount > 0 then 
+			-- 再远程
+			Cmd_Attack(sg, enemy.ycSg)
+			isAttacked = true
+		elseif enemy.qbSgCount > 0 then 
+			-- 再骑兵
+			Cmd_Attack(sg, enemy.qbSg)
+			isAttacked = true
+		end
+	elseif BattleAI_SquadIsBb(sid) then 
+		-- 如果是步兵
+		if enemy.pcSgCount > 0 and player.ncSgCount < 1 and player.qbSgCount < 1 then 
+			Cmd_Attack(sg, enemy.pcSg)
+			isAttacked = true
+		elseif enemy.qbSgCount > 0 then 
+			-- 再骑兵
+			Cmd_Attack(sg, enemy.qbSg)
+			isAttacked = true
+		end
+	elseif BattleAI_SquadIsGjs(sid) then 
+		-- 如果是弓箭手, 对方有步兵，且己方没有骑兵，则优先攻击步兵
+		if enemy.bbSgCount > 0 and player.qbSgCount > 0 then 
+			Cmd_Attack(sg, enemy.bbSg)
+			isAttacked = true
+		elseif enemy.ycSgCount > 0 then 
+			-- 再远程
+			Cmd_Attack(sg, enemy.ycSg)
+			isAttacked = true
+		end
+	end
+	
+	if BattleAI_SquadIsHq(sid) then 
+		if enemy.qbSgCount > 0 then 
+			Cmd_Attack(sg, enemy.qbSg)
+			isAttacked = true
+		elseif enemy.bbSgCount > 0 then 
+			Cmd_Attack(sg, enemy.bbSg)
+			isAttacked = true
+		elseif enemy.ycSgCount > 0 then 
+			-- 再远程
+			Cmd_Attack(sg, enemy.ycSg)
+			isAttacked = true
+		end
+	end
+	
+	
+
+	local position = nil
+	if SGroup_CountDeSpawned(enemy.sg) > 0 then 
+		position = Util_DismissErrors(nil, function() return SGroup_GetPosition(enemy.sg) end)
+	end
+	if position == nil then 
+		position = world_center
+	end
+	
+	if BattleAI_SquadIsFz(sid) and not Squad_IsAttackMoving(sid) and not Squad_IsAttacking(sid, 5) then
+		
+		local p = nil
+		if SGroup_CountDeSpawned(p.sg) > 0 then 
+			p = Util_DismissErrors(nil, function() return SGroup_GetPosition(p.sg) end)
+		end
+		if p == nil then 
+			p = world_center
+		end
+		
+		local sp = Squad_GetPosition(sid)
+		
+		if World_DistancePointToPoint(sp, p) > World_DistancePointToPoint(sp, position) then 
+			p = position
+		end
+		
+		Cmd_AttackMove(sg, p)
+		isAttacked = true
+	end
+	
+	if not isAttacked and not Squad_IsAttackMoving(sid) and not Squad_IsAttacking(sid, 5) then 
+		Cmd_AttackMove(sg, position, false, nil, arena_radius * 100)
+	end
+	SGroup_Clear(sg)
+	--]]
+end
+

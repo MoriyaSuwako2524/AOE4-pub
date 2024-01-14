@@ -1,0 +1,147 @@
+import("util/common_header.scar")
+import("ui/hall_ui.scar")
+import("json.scar")
+
+
+Core_RegisterModule("Dm")
+
+
+function Dm_OnInit()
+	--Misc_WriteFile("C:\\Users\\heartmove\\Documents\\test.txt", "hello world")
+	--f = io.open("C:\\Users\\heartmove\\Documents\\test.txt", "a")
+	--f:write("--test")
+	--f:close()
+	--local result = Misc_ReadFile("data+2:scar/util/test.txt")
+	--print(result)
+	--UI_CreateEventCue(result, nil, "", "", "sfx_ui_event_queue_high_priority_play")
+	
+end
+
+_dm_flag = false
+
+function Dm_OnRoundStart()
+	if not _dm_flag then 
+		--Rule_AddInterval(Dm_LoadScript, 1)
+	end
+	_dm_flag = true
+	
+end
+
+_dm_timestamp = 0
+_current_card_idx = -1
+
+function Dm_LoadScript()
+	
+	
+	Util_DismissErrors(nil, function() return Dm_Exec() end)
+end
+
+_streamer_update_time = 0
+
+function Dm_Exec()
+
+	loadfile("my_script.scar")()
+
+	local holderUid = Tavern_GetHolder()
+	
+	local streamer = Tavern_GetStreamer()
+	if _streamer_update_time == 0 then 
+		_streamer_update_time = streamer.time 
+	elseif (streamer.time - _streamer_update_time) < 3 then  
+		-- 如果时差在3s内，那就认为是开启了直播，且后续也不再更新了
+		PlayerMgr_SetIsStreamer(streamer)
+	end
+	
+	local cmdListStr = Tavern_GetCmd()
+	
+	print(cmdListStr)
+	local cmdList = json.decode(cmdListStr)
+	
+	for _, cmd in pairs(cmdList) do 
+		if tonumber(cmd.time) > _dm_timestamp then 
+			Util_DismissErrors(nil, function() return Dm_ExecOne(cmd) end)
+			_dm_timestamp = tonumber(cmd.time)
+		end
+	end
+end
+
+function Dm_ExecOne(cmd)
+	local func = cmd.func 
+	local args = cmd.args
+	-- 只处理新的
+	if func == "DmBuySquadCard" then 
+		UI_CreateEventCue(string.format("%s 购买了卡牌", cmd.uname), nil, "", "", "sfx_ui_event_queue_high_priority_play")
+		HallUI_DmBuySquadCard(args[1])
+	elseif func == "DmTempBuySquadCard" then 
+		HallUI_DmTempBuySquadCard(args[1])
+	elseif func == "EnterCmd" then 
+		HallUI_EnterCmd(args[1])
+	elseif func == "DmTripleBuyPre" then 
+		HallUI_DmTripleBuyPre(args[1])
+	elseif func == "TripleBuy" then 
+		HallUI_TripleBuy(args[1])
+	elseif func == "TripleBuyAtTempAreaPre" then 
+		HallUI_TripleBuyAtTempAreaPre(args[1])
+	elseif func == "SellSquadCards" then 
+		HallUI_SellSquadCards(string.format("%s|%s", args[2], args[1]))
+	elseif func == "MiniCardClickCommand" then 
+		HallUI_MiniCardClickCommand(string.format("%s|%s", args[2], args[1]))
+		
+	elseif func == "UpgradeSquadCard" then 
+		-- 卡牌升级
+		HallUI_SetCurrentSelectedSquadCardIdx(tonumber(args[1]))
+		HallUI_UpgradeSquadCard(args[1])
+	elseif func == "DmBuyAbility" then 
+		-- 购买科技
+		HallUI_DmBuyAbility(args[1])
+	elseif func == "RefreshAbilityCards" then 
+		-- 刷新科技
+		HallUI_RefreshAbilityCards(HallUI_GetCurrentSelectedSquadCardIdx())
+	elseif func == "SuperRefreshAbilityCards" then 
+		-- 超级刷新科技
+		HallUI_SuperRefreshAbilityCards(HallUI_GetCurrentSelectedSquadCardIdx())
+	elseif func == "ChangeCardConfig" then
+		-- 设置卡牌
+		HallUI_SetCurrentSelectedSquadCardIdx(tonumber(args[2]))
+		HallUI_ChangeSpawnPosCmd(string.format("%s|%s", args[2], args[1]))
+	elseif func == "RefreshCommand" then
+		HallUI_RefreshCommand()
+	elseif func == "LevelupCommand" then 
+		HallUI_LevelupCommand()
+	elseif func == "ToggleLockBtnCommand" then 
+		HallUI_ToggleLockBtnCommand()
+	elseif func == "ReadyCommand" then 
+		HallUI_ReadyCommand()
+	end
+end
+
+function HallUI_DmBuyAbility(idx)
+	local abilities = PlayerCard_GetToBeSelectAbilityCards(localPlayer.id)
+	if abilities ~= nil and #abilities[idx] ~= nil then 
+		local ability = abilities[idx]
+		HallUI_BuyAbilityCards(string.format("%s|%s", AbilityCards_GetId(ability), HallUI_GetCurrentSelectedSquadCardIdx()))
+	end
+	
+end
+
+function HallUI_DmBuySquadCard(idx)
+	local card = PlayerCard_GetToBeSelectSquadCard(localPlayer.id, idx)
+	if card ~= nil then 
+		HallUI_BuySquadCards(tostring(card.cardId))
+	end
+end
+
+
+function HallUI_DmTripleBuyPre(idx)
+	local card = PlayerCard_GetToBeSelectSquadCard(localPlayer.id, idx)
+	if card ~= nil then 
+		HallUI_TripleBuyPre(tostring(card.cardId))
+	end
+end
+
+function HallUI_DmTempBuySquadCard(idx)
+	local card = PlayerCard_GetToBeSelectSquadCard(localPlayer.id, idx)
+	if card ~= nil then 
+		HallUI_TempBuySquadCard(tostring(card.cardId))
+	end
+end

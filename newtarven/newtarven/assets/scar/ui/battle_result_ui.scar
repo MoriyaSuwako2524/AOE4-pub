@@ -1,0 +1,106 @@
+import ("util/common_header.scar")
+import ("gameplay/battle.scar")
+
+
+_battle_result_xaml = [[<Grid HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,0"  Width="1920" Height="1080"
+		Orientation="Horizontal" Visibility="{Binding [show], Converter={StaticResource BoolToVis}}" 
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+xmlns:engineSharedEffects="clr-namespace:WPFGUI.Shared.Effects;assembly=EngineUI.Shaders">
+
+		<Grid.Resources>
+		<sys:Double x:Key="CardOpacity">0.4</sys:Double>
+		
+		<Style x:Key="TavernButtonStyle" TargetType="Button">
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Background" Value="Transparent" />
+	        <Setter Property="SnapsToDevicePixels" Value="true" />
+	        <Setter Property="OverridesDefaultStyle" Value="true" />
+	        <Setter Property="HorizontalAlignment" Value="Left" />
+	        <Setter Property="Width" Value="47" />
+	        <Setter Property="Height" Value="47" />
+			<Setter Property="esUtility:AudioAttachedProperty.PreviewMouseLeftButtonUpSound"
+	                Value="sfx_ui_hud_inGame_button_play" />
+	        <Setter Property="Template">
+	            <Setter.Value>
+	                <ControlTemplate TargetType="Button">
+	                    <Border Name="ResourceButton">
+	                        <Grid>
+								<Border Background="{DynamicResource TertiaryColorLightBrush}">
+									<Border>
+										<Border.Background>
+											<RadialGradientBrush Center="0.5,0" GradientOrigin="0.5,0" RadiusX="0.7" RadiusY="0.6">
+										        <GradientStop Offset="0" Color="{DynamicResource TertiaryColorExtraLight}" />
+										        <GradientStop Offset="1" Color="{DynamicResource TertiaryColorExtraLightTransparent}" />
+										    </RadialGradientBrush>
+										</Border.Background>
+									</Border>
+                                </Border>
+								
+	                            <Rectangle Name="Base" Fill="#33505050" />
+	                            
+								<Rectangle Name="Rollover" Fill="{StaticResource ButtonHighlightBrush}" Visibility="Collapsed" />
+	                            
+								<Rectangle Name="Highlight" Fill="#FF93BED7" Visibility="Collapsed" />
+								
+	                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+	                        </Grid>
+	                    </Border>
+	                    <ControlTemplate.Triggers>
+	                        <Trigger Property="IsMouseOver" Value="true">
+	                            <Setter TargetName="Rollover" Property="Visibility" Value="Visible" />
+	                        </Trigger>
+	                        <Trigger Property="IsPressed" Value="true">
+	                            <Setter TargetName="Highlight" Property="Visibility" Value="Visible" />
+	                        </Trigger>
+	                        <Trigger Property="IsEnabled" Value="false">
+								 <Setter TargetName="ResourceButton" Property="Opacity" Value="{StaticResource ButtonDisabledOpacity}" />
+	                        </Trigger>
+	                    </ControlTemplate.Triggers>
+	                </ControlTemplate>
+	            </Setter.Value>
+	        </Setter>
+	    </Style>
+		
+		</Grid.Resources>
+	
+	</Grid>
+
+]]
+
+_battle_result_ui = {
+	name = "_battle_result_ui",
+	xaml = _battle_result_xaml,
+	context = {
+		show = false,
+	},
+}
+
+
+function BattleResultUI_OnInit()
+	
+	
+end
+
+
+function BattleResultUI_Start()
+	UI_AddChild("ScarDefault", "XamlPresenter", _battle_result_ui.name, { IsHitTestVisible = true, Xaml = _battle_result_ui.xaml, DataContext = UI_CreateDataContext(_battle_result_ui.context)})
+end
+
+
+function BattleResultUI_UpdateUI()
+	
+	
+	UI_SetDataContext(_battle_result_ui.name, _battle_result_ui.context)
+end
+
+function BattleResultUI_HideUI()
+	_battle_result_ui.context.show = false
+	BattleResultUI_UpdateUI()
+end
+
+
+function BattleResultUI_ShowUI()
+	_battle_result_ui.context.show = true
+	BattleResultUI_UpdateUI()
+end

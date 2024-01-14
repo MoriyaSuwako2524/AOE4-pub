@@ -1,0 +1,298 @@
+import ("util/common_header.scar")
+
+-- 挑选角色UI
+_pick_race_ui = [[<Grid HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,200" 
+		Width="{Binding ActualWidth, ElementName=TheHUDPage}"
+		Orientation="Horizontal" Visibility="{Binding [show], Converter={StaticResource BoolToVis}}" 
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+xmlns:engineSharedEffects="clr-namespace:WPFGUI.Shared.Effects;assembly=EngineUI.Shaders">
+
+	<Grid.Resources>
+		<Style x:Key="TavernButtonStyle" TargetType="Button">
+	        <Setter Property="SnapsToDevicePixels" Value="true" />
+	        <Setter Property="OverridesDefaultStyle" Value="true" />
+	        <Setter Property="HorizontalAlignment" Value="Left" />
+			<Setter Property="BorderThickness"  Value="0" />
+			<Setter Property="esUtility:AudioAttachedProperty.PreviewMouseLeftButtonUpSound"
+	                Value="sfx_ui_hud_inGame_button_play" />
+	        <Setter Property="Template">
+	            <Setter.Value>
+	                <ControlTemplate TargetType="Button">
+	                 	<Border Name="ResourceButton">
+	                        <Grid>
+								<!--
+								<Border Background="{DynamicResource TertiaryColorLightBrush}">
+									<Border>
+										<Border.Background>
+											<RadialGradientBrush Center="0.5,0" GradientOrigin="0.5,0" RadiusX="0.7" RadiusY="0.6">
+										        <GradientStop Offset="0" Color="{DynamicResource TertiaryColorExtraLight}" />
+										        <GradientStop Offset="1" Color="{DynamicResource TertiaryColorExtraLightTransparent}" />
+										    </RadialGradientBrush>
+										</Border.Background>
+									</Border>
+                                </Border>
+								-->
+								
+	                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+	                        </Grid>
+	                    </Border>
+	                    <ControlTemplate.Triggers>
+	                        <Trigger Property="IsMouseOver" Value="true">
+								<Setter Property="Opacity" Value="1" />
+	                        </Trigger>
+	                      
+	                    </ControlTemplate.Triggers>
+	                </ControlTemplate>
+	            </Setter.Value>
+	        </Setter>
+	    </Style>	
+		
+		<DropShadowEffect x:Key="DropShadow" BlurRadius="0.5" ShadowDepth="1.5"  />
+		
+		<DataTemplate x:Key="Race">
+			<Button 
+					Height="100"
+					Command="{Binding [cmd]}"
+					CommandParameter="{Binding [race]}"
+					Style="{StaticResource TavernButtonStyle}"
+					IsEnabled="{Binding [canSelect]}"
+					>
+				<Button.Content>
+					<Border Margin="2,2,2,0" BorderThickness="0" BorderBrush="#41485C"
+					VerticalAlignment="Top">
+						<Grid>
+							<Image 
+									Height="100"
+									Source="{Binding [icon]}"/>
+							
+						</Grid>
+					</Border>		
+				</Button.Content>
+			</Button>
+		</DataTemplate>
+		
+		<!-- <ListView ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+					ItemsSource="{Binding}" 
+					ItemTemplate="{StaticResource Race}" >
+				<ListView.Background>
+					<SolidColorBrush Color="Gray" Opacity="0.1" />	
+				</ListView.Background>
+				 <ListView.ItemsPanel>
+	                <ItemsPanelTemplate>
+	                    <WrapPanel Orientation="Horizontal"/>
+	                </ItemsPanelTemplate>
+	            </ListView.ItemsPanel>
+			</ListView> -->
+		
+		<DataTemplate x:Key="Races" >
+			 <ItemsControl Name="ShowRoles" 
+					ItemsSource="{Binding}"
+					HorizontalAlignment="Left"
+					ItemTemplate="{StaticResource Race}">
+				<ItemsControl.ItemsPanel>
+					<ItemsPanelTemplate>
+						<WrapPanel Orientation="Horizontal" FlowDirection="LeftToRight"/>
+					</ItemsPanelTemplate>
+				</ItemsControl.ItemsPanel>
+			</ItemsControl>
+	-->
+		</DataTemplate>
+	</Grid.Resources>
+		
+	<!--
+	<ItemsControl Name="ShowRoles" 
+					ItemsSource="{Binding}"
+					HorizontalAlignment="Left"
+					ItemTemplate="{StaticResource Race}">
+				<ItemsControl.ItemsPanel>
+					<ItemsPanelTemplate>
+						<StackPanel Orientation="Horizontal" FlowDirection="LeftToRight"/>
+					</ItemsPanelTemplate>
+				</ItemsControl.ItemsPanel>
+			</ItemsControl>
+	-->
+	
+	<Grid.RowDefinitions>
+		<RowDefinition Height="50" />	
+		<RowDefinition Height="200" />	
+		<RowDefinition Height="200" />
+	</Grid.RowDefinitions>	
+	<StackPanel Grid.Row="0" HorizontalAlignment="Center">
+		<TextBlock Text="{Binding [title]}" HorizontalAlignment="Center" Style="{StaticResource HUDWhiteBaseTextBlock18ptStyle}" Effect="{StaticResource DropShadow}" ></TextBlock>
+		<TextBlock Text="{Binding [time]}" HorizontalAlignment="Center" Style="{StaticResource HUDWhiteBaseTextBlock18ptStyle}" Effect="{StaticResource DropShadow}" ></TextBlock>
+	</StackPanel>
+	<StackPanel Grid.Row="1" HorizontalAlignment="Center">
+		<ContentControl Content="{Binding [unSelected]}" ContentTemplate="{StaticResource Races}" HorizontalAlignment="Center" />
+	</StackPanel>
+	<StackPanel Grid.Row="2" HorizontalAlignment="Center" >
+		<ContentControl Content="{Binding [selected]}" ContentTemplate="{StaticResource Races}" HorizontalAlignment="Center" />
+	</StackPanel>
+</Grid>
+
+]]
+
+
+_pick_race_ui_data = {
+	name = "pick_race_ui",
+	context = {
+		show = true,
+		selected = {
+			
+		},
+		selectedRaces = {
+			
+		},
+		unSelected = {
+			
+		},
+		title = "",
+	},
+	timer = "PICK_RACE_TIMER",
+	waitSec = 30,
+}
+
+
+Core_RegisterModule("PickRaceUI")
+
+function PickRaceUI_OnInit()
+	for i, player in pairs(PLAYERS) do
+		player.pickedRaces = {}
+	end
+	if ConfigUtil_IsTestMode() then 
+		_pick_race_ui_data.waitSec = 5
+	end
+end
+
+function PickRaceUI_Start()
+	PickRaceUI_UpdateContext()
+	Timer_Start(_pick_race_ui_data.timer, _pick_race_ui_data.waitSec)
+	Rule_AddInterval(PickRaceUI_Interval, 1)
+	Rule_Add(PickRaceUI_UpdateUI)
+	Network_RegisterEvent("PickRaceUI_ChosenCommandNtw")
+	
+	_pick_race_ui_data.context.title = Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:125", PickRaceUI_NeedPickRaceCount(localPlayer.id))
+	UI_AddChild("ScarDefault", "XamlPresenter", _pick_race_ui_data.name, { IsHitTestVisible = true, Xaml = _pick_race_ui, DataContext = UI_CreateDataContext(_pick_race_ui_data.context) })
+end
+
+-- 更新UI
+function PickRaceUI_UpdateUI()
+	PickRaceUI_UpdateContext()
+	
+	_pick_race_ui_data.context.title = Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:125", PickRaceUI_NeedPickRaceCount(localPlayer.id))
+	UI_SetDataContext(_pick_race_ui_data.name, _pick_race_ui_data.context)
+end
+
+function PickRaceUI_GetSelectedRaces()
+	return _pick_race_ui_data.context.selectedRaces
+end
+
+-- 获取可选文明
+function PickRaceUI_GetCanPickedRaces()
+	local allRaces = Util_GetRaces()
+	local races = {}
+	local localRace = Player_GetRaceName(localPlayer.id)
+	local selectedRaces = localPlayer.pickedRaces
+	for _, race in pairs(allRaces) do 
+		if race ~= localRace and not Table_Contains(selectedRaces, race) then 
+			table.insert(races, race)
+		end
+	end
+	return races
+end
+
+-- 更新ui数据
+function PickRaceUI_UpdateContext()
+	local selectedRaces = localPlayer.pickedRaces
+	_pick_race_ui_data.context.unSelected = {}
+	local unSelectedRaces = PickRaceUI_GetCanPickedRaces()
+	for _, race in pairs(unSelectedRaces) do 
+		local canSelect = #selectedRaces < PickRaceUI_NeedPickRaceCount(localPlayer.id)
+		table.insert(_pick_race_ui_data.context.unSelected, {
+				icon = Util_GetRaceIcon(race),
+				cmd = UI_CreateCommand("PickRaceUI_ChosenCommand"),
+				canSelect = canSelect,
+				race = race,
+			})
+	end
+	
+	_pick_race_ui_data.context.selected = {}
+	for _, race in pairs(localPlayer.pickedRaces) do 
+		table.insert(_pick_race_ui_data.context.selected, {
+				icon = Util_GetRaceIcon(race),
+				race = race,
+			})
+	end
+end
+
+
+-- chosenCommand
+function PickRaceUI_ChosenCommand(race)
+	
+	Network_CallEvent("PickRaceUI_ChosenCommandNtw", race)
+end
+
+
+function PickRaceUI_ChosenCommandNtw(playerId, race)
+	print("PickRaceUI_ChosenCommandNtw" .. Player_GetID(playerId))
+	local player = Core_GetPlayersTableEntry(playerId)
+	local needPickRaceCount =  PickRaceUI_NeedPickRaceCount(playerId)
+	if not Table_Contains(player.pickedRaces, race) and #player.pickedRaces < needPickRaceCount then 
+		table.insert(player.pickedRaces, race)
+	end
+end
+
+
+function PickRaceUI_GetTimer()
+	return _pick_race_ui_data.timer
+end
+
+function PickRaceUI_GetLeftTime()
+	local sec = Timer_GetRemaining(_pick_race_ui_data.timer)
+	return Util_FormatSecs(sec)
+end
+
+function PickRaceUI_NeedPickRaceCount(playerId)
+	local count = 4
+	if ConfigUtil_IsDlcRace(Player_GetRaceName(playerId)) then 
+		count = count + 1
+	end
+	return count
+end
+
+-- 刷新定时器
+function PickRaceUI_Interval()
+	_pick_race_ui_data.context.time = PickRaceUI_GetLeftTime()
+	if Timer_GetRemaining(_pick_race_ui_data.timer) <= 0 then 
+		Rule_Remove(PickRaceUI_Interval)
+		Rule_Remove(PickRaceUI_UpdateUI)
+		for i, player in pairs(PLAYERS) do 
+			local needPickRaceCount = 1
+			print("#player.pickedRaces:" .. #player.pickedRaces)
+			if not ConfigUtil_IsDlcRace(player.id) then 
+				table.insert(player.pickedRaces, Player_GetRaceName(player.id))
+			end
+			if #player.pickedRaces < needPickRaceCount then 
+				local races = Util_GetRaces()
+				for _, r in pairs(player.pickedRaces) do 
+					Table_RemoveFirstItem(races, r)
+				end
+				local leftCount = needPickRaceCount - #player.pickedRaces
+				for j = 1, leftCount do 
+					local rand = World_GetRand(1, #races)
+					local pickedRace = races[rand]
+					table.insert(player.pickedRaces, pickedRace)
+					table.remove(races, rand)
+				end
+			end
+		end
+		Timer_End(PickRaceUI_GetTimer()) 
+
+		-- 隐藏该UI
+		_pick_race_ui_data.context.show = false
+		PickRaceUI_UpdateUI()
+		-- 轮次开始
+		TavernRound_RoundStart()
+	end
+	-- PickRaceUI_UpdateUI()
+end

@@ -1,0 +1,327 @@
+-- 卡牌执行事件
+
+import("util/common_header.scar")
+import("cards/ability_cards.scar")
+import("cards/player_cards.scar")
+import("cards/race_ability.scar")
+
+Core_RegisterModule("CardsEvent")
+
+
+function CardsEvent_OnInit()
+	-- 单位被击杀事件
+	Rule_AddGlobalEvent(CardsEvent_OnEntityKilled, GE_EntityKilled)
+	Rule_AddGlobalEvent(CardsEvent_OnDamageReceived, GE_DamageReceived)
+	Rule_AddGlobalEvent(CardsEvent_OnSquadKilled, GE_SquadKilled)
+	
+	Network_RegisterEvent("CardsEvent_OnCardBuyNtw")
+	Network_RegisterEvent("CardsEvent_OnCardSaleNtw")
+	Network_RegisterEvent("CardsEvent_OnAbilityExecutedNtw")
+end
+
+function CardsEvent_Start()
+	
+end
+
+-- 轮次开始时，开始选择卡牌
+function CardsEvent_OnRoundStart()
+	local func = function(idx, playerId, squadCard, context) 
+		local sg = PlayerCard_GetSG(squadCard)
+		SGroup_Clear(sg)
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnRoundStart")
+	end
+	local tempAreaFunc = function(idx, playerId, squadCard, context) 
+		--local sg = PlayerCard_GetSG(squadCard)
+		--SGroup_Clear(sg)
+		PlayerCard_ForeachDoAbilitiesByTempArea(playerId, squadCard, idx, context, "OnRoundStart")
+	end
+	for i, player in pairs(PLAYERS) do 
+		PlayerCard_Foreach(player.id, func, nil)  -- 执行存储取所有卡牌的节能
+		PlayerCard_ForeachTempAreaCards(player.id, tempAreaFunc, nil)
+		RaceAbility_DoEvent(player.id, "OnRoundStart")
+	end
+end
+
+
+function CardsEvent_OnLevelUp(playerId)
+	local func = function(idx, playerId, squadCard, context) 
+		local sg = PlayerCard_GetSG(squadCard)
+		SGroup_Clear(sg)
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnLevelUp")
+	end
+	local tempAreaFunc = function(idx, playerId, squadCard, context) 
+		--local sg = PlayerCard_GetSG(squadCard)
+		--SGroup_Clear(sg)
+		PlayerCard_ForeachDoAbilitiesByTempArea(playerId, squadCard, idx, context, "OnLevelUp")
+	end
+
+	PlayerCard_Foreach(playerId, func, nil)  -- 执行存储取所有卡牌的节能
+	PlayerCard_ForeachTempAreaCards(playerId, tempAreaFunc, nil)
+
+end
+
+
+
+-- 轮次结束
+function CardsEvent_OnRoundEnd()
+	local func = function(idx, playerId, squadCard, context) 
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnRoundEnd")
+	end
+	for i, player in pairs(PLAYERS) do 
+		PlayerCard_Foreach(player.id, func, nil)
+		RaceAbility_DoEvent(player.id, "OnRoundEnd")
+	end
+end
+
+-- 部署单位开始
+function CardsEvent_OnDeploymentStart()
+	local func = function(idx, playerId, squadCard, context) 
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnDeploymentStart")
+	end
+	for i, player in pairs(PLAYERS) do 
+		PlayerCard_Foreach(player.id, func, nil)
+		RaceAbility_DoEvent(player.id, "OnDeploymentStart")
+	end
+end
+
+
+-- 轮次战斗开始
+function CardsEvent_OnCombatStart()
+	local func = function(idx, playerId, squadCard, context) 
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnCombatStart")
+	end
+	for i, player in pairs(PLAYERS) do 
+		PlayerCard_Foreach(player.id, func, nil)
+		RaceAbility_DoEvent(player.id, "OnCombatStart")
+	end
+end
+
+-- 轮次战斗结束
+function CardsEvent_OnCombatEnd()
+	local func = function(idx, playerId, squadCard, context) 
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnCombatEnd")
+	end
+	for i, player in pairs(PLAYERS) do 
+		PlayerCard_Foreach(player.id, func, nil)
+		RaceAbility_DoEvent(player.id, "OnCombatEnd")
+	end
+end
+
+
+function CardsEvent_OnDeploymentStart()
+	local func = function(idx, playerId, squadCard, context) 
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnDeploymentStart")
+	end
+	for i, player in pairs(PLAYERS) do 
+		PlayerCard_Foreach(player.id, func, nil)
+		RaceAbility_DoEvent(player.id, "OnDeploymentStart")
+	end
+end
+
+function CardsEvent_OnDeploymentEnd()
+	local func = function(idx, playerId, squadCard, context) 
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnDeploymentEnd")
+	end
+	for i, player in pairs(PLAYERS) do 
+		PlayerCard_Foreach(player.id, func, nil)
+		RaceAbility_DoEvent(player.id, "OnDeploymentEnd")
+	end
+end
+
+-- 场次战斗开始
+function CardsEvent_OnSessionCombatStart()
+	local func = function(idx, playerId, squadCard, context) 
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnSessionCombatStart")
+	end
+	for i, player in pairs(PLAYERS) do 
+		PlayerCard_Foreach(player.id, func, nil)
+		RaceAbility_DoEvent(player.id, "OnSessionCombatStart")
+	end
+end
+
+-- 场次战斗结束
+function CardsEvent_OnSessionCombatEnd(playerId)
+	local func = function(idx, playerId, squadCard, context) 
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnSessionCombatEnd")
+	end
+	PlayerCard_Foreach(playerId, func, nil)
+end
+	
+-- 单位被击杀
+function CardsEvent_OnEntityKilled(context)
+	local victimType = scartype(context.victim)
+	if context == nil or context.killer == nil or context.victim == nil or (victimType == ST_SQUAD and World_OwnsSquad(context.victim))
+		or (victimType == ST_ENTITY and World_OwnsEntity(context.victim)) then
+		return 
+	end
+	if context.killer then
+		local getPlayerOwner = Squad_GetPlayerOwner
+		if victimType == ST_ENTITY then 
+			getPlayerOwner = Entity_GetPlayerOwner
+		end
+		local ownerId = getPlayerOwner(context.victim)
+		if ownerId == nil then
+			return
+		end
+		local owner = Core_GetPlayersTableEntry(ownerId)
+		if owner and not Player_IsAlive(owner.id) then
+			return
+		end
+		
+		local squad = context.victim
+		if victimType == ST_ENTITY then 
+			squad = Entity_GetSquad(squad)
+		end
+		print("CardsEvent_OnEntityKilled")
+		--[[
+		local bp = Squad_GetBlueprint(entity)
+		local squadCardIdx = PlayerCard_GetSquadMapping(owner, context.victim)
+		local squadCard = PlayerCard_GetSquadAbilityCards(owner.id, squadCardIdx)
+		local abilityCards = PlayerCard_GetAbilityCards(squadCard)
+		for i, abilityCard in pairs(abilityCards) do
+			if abilityCard.OnSquadKilled ~= nil then  
+				abilityCard.OnSquadKilled(playerId, idx, squadCard, bp)
+			end
+		end
+		--]]
+	end
+	
+end
+
+-- 购买单位卡牌
+function CardsEvent_OnSquadCardBuy(playerId, selectedCardId, areaType)
+	print("CardsEvent_OnSquadCardBuy:" .. selectedCardId)
+	SquadCards_RecordPickedCard(selectedCardId)
+	
+	local func = function(idx, playerId, squadCard, context) 
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnSquadCardBuy")
+	end
+	
+	
+	PlayerCard_Foreach(playerId, func, {
+			areaType = areaType,
+			squadCard = Clone(SquadCards_GetById(selectedCardId)),
+		})
+end
+
+
+-- 购买单位卡牌
+function CardsEvent_OnSquadCardEnter(playerId, selectedCardId, areaType)
+	--print("CardsEvent_OnSquadCardBuy:" .. selectedCardId)
+	
+	local func = function(idx, playerId, squadCard, context) 
+		PlayerCard_ForeachDoAbilities(playerId, squadCard, idx, context, "OnSquadCardEnter")
+	end
+	PlayerCard_Foreach(playerId, func, {
+			areaType = areaType,
+			squadCard = Clone(SquadCards_GetById(selectedCardId)),
+		})
+end
+
+
+-- 购买技能卡牌
+function CardsEvent_OnAbilityCardBuy(playerId, cardId)
+	
+end
+
+
+-- 出售卡牌
+function CardsEvent_OnSquadCardSale(playerId, cardIdx, areaType)
+	if areaType == AREA_STANDARD then 
+		local squadCard = PlayerCard_GetSquadCardByIdx(playerId, cardIdx)
+		if squadCard ~= nil then 
+			PlayerCard_ForeachDoAbilities(playerId, squadCard, cardIdx, nil, "OnSquadCardSale")
+		end
+	elseif areaType == AREA_TEMP then 
+		local squadCard = PlayerCard_GetTempAreaSquadCardByIdx(playerId, cardIdx)
+		if squadCard ~= nil then 
+			PlayerCard_ForeachDoAbilitiesByTempArea(playerId, squadCard, cardIdx, nil, "OnSquadCardSale")
+		end		
+	end
+	
+end
+
+-- 角色触发能力
+function CardsEvent_OnAbilityExecuted()
+	Network_CallEvent("CardsEvent_OnAbilityExecutedNtw", "")
+end
+
+-- 角色触发能力网络事件
+function CardsEvent_OnAbilityExecutedNtw(playerId, data)
+	
+end
+
+function CardsEvent_OnDamageReceived(context)
+	--print(".00000")
+	-- Util_PrintTable(context)
+	if context == nil  or context.victim == nil or (scartype(context.victimSquad) == ST_ENTITY and  World_OwnsEntity(context.victimSquad)) then
+		
+		return 
+	end
+	
+	if context.attackerOwner ~= nil and context.attacker ~= nil then 
+		local attackerId = context.attackerOwner
+		local attacker = Core_GetPlayersTableEntry(attackerId)
+		
+		local squad = context.victimSquad
+		if squad ~= nil and scartype(squad) == ST_SQUAD and not World_OwnsSquad(squad) then 
+			local squadOwnerId = Squad_GetPlayerOwner(squad)
+			local squadOwner = Core_GetPlayersTableEntry(squadOwnerId)
+			local damge = context.damage + context.shieldDamage
+			local health = context.currentHealth
+			print("damage: " .. damge )
+			local attackSquad = Entity_GetSquad(context.attacker)  
+			if attackSquad ~= nil and health ~= 0 then 
+				-- 伤害反弹
+				local card = PlayerCard_GetBelongSquadCardBySquad(squad)
+				--print(SquadCards_GetId(card))
+			end
+		end
+	end
+	
+end
+
+
+function CardsEvent_OnSquadKilled(context)
+	if context == nil or context.killer == nil or World_OwnsSquad(context.victim) then
+
+		return 
+	end
+	--Util_PrintTable(context)
+	if context.killer then
+		--print("CardsEvent_OnSquadKilled")
+		local killedSquad = context.victim
+		local squadID = Squad_GetID(killedSquad)
+		
+		-- 攻击者卡牌
+		local killerCard = nil 
+		local killerId = nil
+		if scartype(context.killer) == ST_SQUAD then
+			killerId = Squad_GetPlayerOwner(context.killer)
+			--print("CardsEvent_OnSquadKilled 0")
+			killerCard = PlayerCard_GetBelongSquadCardBySquad(context.killer)
+			--Util_PrintTable(killerCard)
+		elseif not World_OwnsEntity(context.killer) then
+			--print("CardsEvent_OnSquadKilled 00")
+			killerId = Entity_GetPlayerOwner(context.killer)
+			local killerSquad = Entity_GetSquad(context.killer)
+			killerCard = PlayerCard_GetBelongSquadCardBySquad(killerSquad)
+			--Util_PrintTable(killerCard)
+		end
+		
+	
+
+		if killerId == nil then
+			--print("CardsEvent_OnSquadKilled 1")
+			return
+		end
+		--print("CardsEvent_OnSquadKilled 2")
+		local killer = Core_GetPlayersTableEntry(killerId)
+		
+		if killerCard ~= nil then 
+			--print("CardsEvent_OnSquadKilled 3")
+			PlayerCard_ForeachDoAbilities(killerId, killerCard, nil, nil, "OnKillSquad")
+		end
+		
+	end
+end

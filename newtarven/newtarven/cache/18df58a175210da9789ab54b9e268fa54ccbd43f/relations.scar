@@ -1,0 +1,79 @@
+import ("util/common_header.scar")
+
+Core_RegisterModule("Relation")
+
+AGS_COLOR_MAINTAINER_TO_SLOT_TABLE = { -- Holds the slot index of each player colour
+	["#FF188CFF"] = 1,
+	["#FFFF3B30"] = 2,
+	["#FFEBD300"] = 3,
+	["#FF00C700"] = 4,
+	["#FF00E8E8"] = 5,
+	["#FFAE6BFF"] = 6,
+	["#FFFF8800"] = 7,
+	["#FFF65BB2"] = 8,
+	["#FF888888"] = 9
+}
+
+
+function Relation_OnInit()
+	
+	Network_RegisterEvent("Relation_ChangeRelationNtw")
+	
+end
+
+function Relation_Start()
+	
+	for i,player in pairs(PLAYERS) do
+		if localPlayer.id ~= player.id and Player_ObserveRelationship(player.id, localPlayer.id) == R_ALLY then
+		   	Relation_ChangeRelation(string.format("%d,%d", player.index, Relation_RelationConverter(R_ENEMY)))
+		end
+	end
+end
+
+function Relation_ChangeRelation(parameter)
+	Network_CallEvent("Relation_ChangeRelationNtw", parameter)
+end
+
+
+function Relation_ChangeRelationNtw(playerID, data)  
+	
+	-- Expected format of data parameter is: observerPlayerID,targetPlayerID,relationAsAnInt
+	local parts = string.split(data)
+	local observerPlayer = Core_GetPlayersTableEntry(playerID)
+ 	local targetPlayer = Core_GetPlayersTableEntryFromIndex(tonumber(parts[1]))
+	local relation = Relation_RelationConverter(tonumber(parts[2]))
+	
+	if Player_ObserveRelationship(playerID, targetPlayer.id) ~= relation then 
+		Player_SetRelationship(playerID, targetPlayer.id, relation)								
+		Core_CallDelegateFunctions("OnRelationshipChanged", playerID, targetPlayer.id)		-- HACK: Player_SetRelationship() needs to trigger a global event (GE_RelationChanged)
+	end
+	
+	for i, player in pairs(PLAYERS) do
+		--Game_SetPlayerColour(player.id, Player_GetUIColour(player.id))
+		--Game_SetPlayerUIColour(player.id, Player_GetUIColour(player.id))
+		local slot = AGS_COLOR_MAINTAINER_TO_SLOT_TABLE[UI_GetColourAsString(Player_GetUIColour(player.id))]
+		Game_SetPlayerSlotColour(player.id, slot)
+        Game_SetPlayerUISlotColour(player.id, slot)
+	end
+end
+
+
+function Relation_RelationConverter(relation)	
+	if scartype(relation) == ST_NUMBER then
+		if relation == 1 then 
+			return R_ENEMY
+		elseif relation == 2 then 
+			return R_ALLY
+		elseif relation == 3 then 
+			return R_NEUTRAL
+		end
+	else
+		if relation == R_ENEMY then 
+			return 1
+		elseif relation == R_ALLY then 
+			return 2
+		elseif relation == R_NEUTRAL then
+			return 3
+		end
+	end
+end

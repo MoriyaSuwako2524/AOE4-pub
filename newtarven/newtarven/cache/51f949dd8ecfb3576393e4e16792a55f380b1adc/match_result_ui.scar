@@ -1,0 +1,539 @@
+import ("util/common_header.scar")
+import ("cards/squad_cards.scar")
+
+-- 挑选角色UI
+_match_result_ui = [[<Grid HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,0" 
+		xmlns:engineHUDPages="clr-namespace:WPFGUI.HUD.Pages;assembly=EngineUI"
+		Orientation="Horizontal" Visibility="{Binding [show], Converter={StaticResource BoolToVis}}" 
+		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+		Height="{Binding ActualHeight, ElementName=TheHUDPage}" Width="{Binding ActualWidth, ElementName=TheHUDPage}"
+		xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		xmlns:esControls="clr-namespace:WPFGUI.Shared.Controls;assembly=EngineUI"		
+		xmlns:esUtility="clr-namespace:WPFGUI.Shared.Utility;assembly=EngineUI"
+		xmlns:engineSharedEffects="clr-namespace:WPFGUI.Shared.Effects;assembly=EngineUI.Shaders"
+		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+
+	<Grid.Resources>
+		<Style x:Key="CardButtonStyle" TargetType="Button">
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Background" Value="Transparent" />
+	        <Setter Property="SnapsToDevicePixels" Value="true" />
+	        <Setter Property="OverridesDefaultStyle" Value="true" />
+	        <Setter Property="HorizontalAlignment" Value="Left" />
+	        <Setter Property="Width" Value="47" />
+	        <Setter Property="Height" Value="47" />
+			<Setter Property="Opacity" Value="1" />
+			<Setter Property="esUtility:AudioAttachedProperty.PreviewMouseLeftButtonUpSound"
+	                Value="sfx_ui_hud_inGame_button_play" />
+	        <Setter Property="Template">
+	            <Setter.Value>
+	                <ControlTemplate TargetType="Button">
+	                 	<Border Name="ResourceButton">
+	                        <Grid>
+								<!--
+								<Border Background="{DynamicResource TertiaryColorLightBrush}">
+									<Border>
+										<Border.Background>
+											<RadialGradientBrush Center="0.5,0" GradientOrigin="0.5,0" RadiusX="0.7" RadiusY="0.6">
+										        <GradientStop Offset="0" Color="{DynamicResource TertiaryColorExtraLight}" />
+										        <GradientStop Offset="1" Color="{DynamicResource TertiaryColorExtraLightTransparent}" />
+										    </RadialGradientBrush>
+										</Border.Background>
+									</Border>
+                                </Border>
+								-->
+								
+	                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+	                        </Grid>
+	                    </Border>
+	                    <ControlTemplate.Triggers>
+	                        <Trigger Property="IsMouseOver" Value="true">
+								<Setter Property="Opacity" Value="1" />
+	                        </Trigger>
+	                      
+	                    </ControlTemplate.Triggers>
+	                </ControlTemplate>
+	            </Setter.Value>
+	        </Setter>
+	    </Style>	
+		
+		<Style x:Key="StyleDockPanelDockRight" TargetType="ContentPresenter">
+			<Setter Property="DockPanel.Dock" Value="Right"/>
+		</Style>
+		
+		<Style x:Key="StyleDockPanelDockLeft" TargetType="ContentPresenter">
+			<Setter Property="DockPanel.Dock" Value="Left"/>
+		</Style>
+		<Style x:Key="TavernButtonStyle" TargetType="Button">
+	        <Setter Property="SnapsToDevicePixels" Value="true" />
+	        <Setter Property="OverridesDefaultStyle" Value="true" />
+	        <Setter Property="HorizontalAlignment" Value="Left" />
+			<Setter Property="BorderThickness"  Value="0" />
+			<Setter Property="esUtility:AudioAttachedProperty.PreviewMouseLeftButtonUpSound"
+	                Value="sfx_ui_hud_inGame_button_play" />
+	        <Setter Property="Template">
+	            <Setter.Value>
+	                <ControlTemplate TargetType="Button">
+	                 	<Border Name="ResourceButton">
+	                        <Grid>
+								<!--
+								<Border Background="{DynamicResource TertiaryColorLightBrush}">
+									<Border>
+										<Border.Background>
+											<RadialGradientBrush Center="0.5,0" GradientOrigin="0.5,0" RadiusX="0.7" RadiusY="0.6">
+										        <GradientStop Offset="0" Color="{DynamicResource TertiaryColorExtraLight}" />
+										        <GradientStop Offset="1" Color="{DynamicResource TertiaryColorExtraLightTransparent}" />
+										    </RadialGradientBrush>
+										</Border.Background>
+									</Border>
+                                </Border>
+								-->
+								
+	                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+	                        </Grid>
+	                    </Border>
+	                    <ControlTemplate.Triggers>
+	                        <Trigger Property="IsMouseOver" Value="true">
+								<Setter Property="Opacity" Value="1" />
+	                        </Trigger>
+	                      
+	                    </ControlTemplate.Triggers>
+	                </ControlTemplate>
+	            </Setter.Value>
+	        </Setter>
+	    </Style>	
+		
+		<DropShadowEffect x:Key="DropShadow" BlurRadius="0.5" ShadowDepth="1.5"  />
+
+		<sys:Double x:Key="LevelWidth">100</sys:Double>
+		<!--  MilitaryTemplate  -->
+        <DataTemplate x:Key="PlayerCardsTemplate">
+            <ListView ItemsSource="{Binding [players]}" Style="{StaticResource ReplayStatListViewStyle}">
+                <ListView.View>
+                    <GridView AllowsColumnReorder="False" ColumnHeaderContainerStyle="{StaticResource GridCellHeaderLeftAlignedCentered}">
+                        <!--  units killed  -->
+                        <GridViewColumn>
+                            <GridViewColumn.Header>
+                                <!--  $11172101: Killed  -->
+                                <ContentPresenter x:Name="UnitsKilledHeaderContent" Width="150" Content="{Binding [nameCol]}" HorizontalAlignment="Center">
+                                    <ContentPresenter.ContentTemplate>
+                                        <DataTemplate>
+                                            <Grid MaxWidth="{StaticResource GridColumnMaxWidthWithIcon}"
+                                                  Margin="{StaticResource SmallMarginRight}"
+                                                  Background="Transparent" ToolTipService.InitialShowDelay="0"
+                                                  ToolTipService.Placement="Mouse" ToolTipService.ShowDuration="86400000">
+                                                <TextBlock 
+                                                           VerticalAlignment="Center"
+
+                                                           esControls:TextBlockExtensions.AutoToolTip="True"
+                                                           Style="{StaticResource HUDTitleAltTextBlockStyle}"
+                                                           Text="{TemplateBinding Content}"
+                                                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ContentPresenter.ContentTemplate>
+                                </ContentPresenter>
+                            </GridViewColumn.Header>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate >
+                                    <Grid Width="{Binding ActualWidth, ElementName=UnitsKilledHeaderContent, Converter={StaticResource AddOperator}, ConverterParameter=6}"
+                                          Height="{StaticResource ReplayStatRowHeight}"
+                                          Margin="{StaticResource ValueColumnGapFixMargin}"
+                                          VerticalAlignment="Center">
+                                       
+                                        <TextBlock Width="{Binding ActualWidth, ElementName=UnitsKilledHeaderContent}"
+                                                   Margin="{StaticResource CellTextNegativeRightOffsetMargin}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Style="{StaticResource HUDGray80BodyTextBlock18ptStyle}"
+                                                   Text="{Binding [name]}"
+												   TextTrimming="CharacterEllipsis" 
+												   esControls:TextBlockExtensions.AutoToolTip="True"
+												   Foreground="{Binding [color]}"
+                                                   TextAlignment="Left" />
+                                    </Grid>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        
+						 <!--  units killed  -->
+                        <GridViewColumn>
+                            <GridViewColumn.Header>
+                                <!--  $11172101: Killed  -->
+                                <ContentPresenter x:Name="levelHeaderContent1" Width="{StaticResource LevelWidth}" Content="{Binding [civCol]}">
+                                    <ContentPresenter.ContentTemplate>
+                                        <DataTemplate>
+                                            <Grid MaxWidth="{StaticResource GridColumnMaxWidthWithIcon}"
+                                                  Margin="{StaticResource SmallMarginRight}"
+                                                  Background="Transparent" ToolTipService.InitialShowDelay="0"
+                                                  ToolTipService.Placement="Mouse" ToolTipService.ShowDuration="86400000">
+                                                <TextBlock 
+                                                           VerticalAlignment="Center"
+
+                                                           esControls:TextBlockExtensions.AutoToolTip="True"
+                                                           Style="{StaticResource HUDTitleAltTextBlockStyle}"
+                                                           Text="{TemplateBinding Content}"
+                                                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ContentPresenter.ContentTemplate>
+                                </ContentPresenter>
+                            </GridViewColumn.Header>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate >
+                                    <Grid Width="{Binding ActualWidth, ElementName=levelHeaderContent1, Converter={StaticResource AddOperator}, ConverterParameter=6}"
+                                          Height="{StaticResource ReplayStatRowHeight}"
+                                          Margin="{StaticResource ValueColumnGapFixMargin}"
+                                          VerticalAlignment="Center">
+                                        <Image Source="{Binding [civIcon]}" Height="30"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+						
+						
+						<GridViewColumn>
+                            <GridViewColumn.Header>
+                                <!--  $11172101: Killed  -->
+                                <ContentPresenter  Width="{StaticResource LevelWidth}" Content="{Binding [rankCol]}">
+                                    <ContentPresenter.ContentTemplate>
+                                        <DataTemplate>
+                                            <Grid MaxWidth="{StaticResource GridColumnMaxWidthWithIcon}"
+                                                  Margin="{StaticResource SmallMarginRight}"
+                                                  Background="Transparent" ToolTipService.InitialShowDelay="0"
+                                                  ToolTipService.Placement="Mouse" ToolTipService.ShowDuration="86400000">
+                                                <TextBlock 
+                                                           VerticalAlignment="Center"
+
+                                                           esControls:TextBlockExtensions.AutoToolTip="True"
+                                                           Style="{StaticResource HUDTitleAltTextBlockStyle}"
+                                                           Text="{TemplateBinding Content}"
+                                                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ContentPresenter.ContentTemplate>
+                                </ContentPresenter>
+                            </GridViewColumn.Header>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate >
+                                    <Grid Width="{Binding ActualWidth, ElementName=levelHeaderContent1, Converter={StaticResource AddOperator}, ConverterParameter=6}"
+                                          Height="{StaticResource ReplayStatRowHeight}"
+                                          Margin="{StaticResource ValueColumnGapFixMargin}"
+                                          VerticalAlignment="Center">
+                                       
+                                        <TextBlock Width="{Binding ActualWidth, ElementName=levelHeaderContent1}"
+                                                   Margin="{StaticResource CellTextNegativeRightOffsetMargin}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Style="{StaticResource HUDGray80BodyTextBlock18ptStyle}"
+                                                   Text="{Binding [rank], Converter={StaticResource CastToIntOperator}}"
+												   TextTrimming="CharacterEllipsis" 
+												   esControls:TextBlockExtensions.AutoToolTip="True"
+                                                   TextAlignment="Left" />
+                                    </Grid>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+						
+						
+						<GridViewColumn>
+                            <GridViewColumn.Header>
+                                <!--  $11172101: Killed  -->
+                                <ContentPresenter x:Name="levelHeaderContent2"  Width="100" Content="{Binding [elapsedTimeCol]}">
+                                    <ContentPresenter.ContentTemplate>
+                                        <DataTemplate>
+                                            <Grid MaxWidth="{StaticResource GridColumnMaxWidthWithIcon}"
+                                                  Margin="{StaticResource SmallMarginRight}"
+                                                  Background="Transparent" ToolTipService.InitialShowDelay="0"
+                                                  ToolTipService.Placement="Mouse" ToolTipService.ShowDuration="86400000">
+                                                <TextBlock 
+                                                           VerticalAlignment="Center"
+                                                           esControls:TextBlockExtensions.AutoToolTip="True"
+                                                           Style="{StaticResource HUDTitleAltTextBlockStyle}"
+                                                           Text="{TemplateBinding Content}"
+                                                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ContentPresenter.ContentTemplate>
+                                </ContentPresenter>
+                            </GridViewColumn.Header>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate >
+                                    <Grid Width="{Binding ActualWidth, ElementName=levelHeaderContent2, Converter={StaticResource AddOperator}, ConverterParameter=6}"
+                                          Height="{StaticResource ReplayStatRowHeight}"
+                                          Margin="{StaticResource ValueColumnGapFixMargin}"
+                                          VerticalAlignment="Center">
+                                       
+                                        <TextBlock Width="{Binding ActualWidth, ElementName=levelHeaderContent2}"
+                                                   Margin="{StaticResource CellTextNegativeRightOffsetMargin}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Style="{StaticResource HUDGray80BodyTextBlock18ptStyle}"
+                                                   Text="{Binding [time]}"
+												   TextTrimming="CharacterEllipsis" 
+												   esControls:TextBlockExtensions.AutoToolTip="True"
+                                                   TextAlignment="Left" />
+                                    </Grid>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+						
+						
+						<GridViewColumn>
+                            <GridViewColumn.Header>
+                                <!--  $11172101: Killed  -->
+                                <ContentPresenter  Width="{StaticResource LevelWidth}" Content="{Binding [roundCol]}">
+                                    <ContentPresenter.ContentTemplate>
+                                        <DataTemplate>
+                                            <Grid MaxWidth="{StaticResource GridColumnMaxWidthWithIcon}"
+                                                  Margin="{StaticResource SmallMarginRight}"
+                                                  Background="Transparent" ToolTipService.InitialShowDelay="0"
+                                                  ToolTipService.Placement="Mouse" ToolTipService.ShowDuration="86400000">
+                                                <TextBlock 
+                                                           VerticalAlignment="Center"
+
+                                                           esControls:TextBlockExtensions.AutoToolTip="True"
+                                                           Style="{StaticResource HUDTitleAltTextBlockStyle}"
+                                                           Text="{TemplateBinding Content}"
+                                                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ContentPresenter.ContentTemplate>
+                                </ContentPresenter>
+                            </GridViewColumn.Header>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate >
+                                    <Grid Width="{Binding ActualWidth, ElementName=levelHeaderContent1, Converter={StaticResource AddOperator}, ConverterParameter=6}"
+                                          Height="{StaticResource ReplayStatRowHeight}"
+                                          Margin="{StaticResource ValueColumnGapFixMargin}"
+                                          VerticalAlignment="Center">
+                                       
+                                        <TextBlock Width="{Binding ActualWidth, ElementName=levelHeaderContent1}"
+                                                   Margin="{StaticResource CellTextNegativeRightOffsetMargin}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Style="{StaticResource HUDGray80BodyTextBlock18ptStyle}"
+                                                   Text="{Binding [round], Converter={StaticResource CastToIntOperator}}"
+												   TextTrimming="CharacterEllipsis" 
+												   esControls:TextBlockExtensions.AutoToolTip="True"
+                                                   TextAlignment="Left" />
+                                    </Grid>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+						
+						<GridViewColumn>
+                            <GridViewColumn.Header>
+                                <!--  $11172101: Killed  -->
+                                <ContentPresenter  Width="{StaticResource LevelWidth}" Content="{Binding [healthCol]}">
+                                    <ContentPresenter.ContentTemplate>
+                                        <DataTemplate>
+                                            <Grid MaxWidth="{StaticResource GridColumnMaxWidthWithIcon}"
+                                                  Margin="{StaticResource SmallMarginRight}"
+                                                  Background="Transparent" ToolTipService.InitialShowDelay="0"
+                                                  ToolTipService.Placement="Mouse" ToolTipService.ShowDuration="86400000">
+                                                <TextBlock 
+                                                           VerticalAlignment="Center"
+
+                                                           esControls:TextBlockExtensions.AutoToolTip="True"
+                                                           Style="{StaticResource HUDTitleAltTextBlockStyle}"
+                                                           Text="{TemplateBinding Content}"
+                                                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ContentPresenter.ContentTemplate>
+                                </ContentPresenter>
+                            </GridViewColumn.Header>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate >
+                                    <Grid Width="{Binding ActualWidth, ElementName=levelHeaderContent1, Converter={StaticResource AddOperator}, ConverterParameter=6}"
+                                          Height="{StaticResource ReplayStatRowHeight}"
+                                          Margin="{StaticResource ValueColumnGapFixMargin}"
+                                          VerticalAlignment="Center">
+                                       
+                                        <TextBlock Width="{Binding ActualWidth, ElementName=levelHeaderContent1}"
+                                                   Margin="{StaticResource CellTextNegativeRightOffsetMargin}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Style="{StaticResource HUDGray80BodyTextBlock18ptStyle}"
+                                                   Text="{Binding [health], Converter={StaticResource CastToIntOperator}}"
+												   TextTrimming="CharacterEllipsis" 
+												   esControls:TextBlockExtensions.AutoToolTip="True"
+                                                   TextAlignment="Left" />
+                                    </Grid>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+						
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </DataTemplate>
+		
+	</Grid.Resources>
+	<ContentControl HorizontalAlignment="Center" VerticalAlignment="Center"
+				ContentTemplate="{StaticResource PlayerCardsTemplate}"
+				Content="{Binding}" />
+</Grid>
+
+]]
+
+
+_match_result_ui_data = {
+	name = "match_result_ui",
+	context = {
+		show = false,
+		players = {},
+		rankCol = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:140"),
+		nameCol = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:138"),
+		civCol = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:139"),
+		elapsedTimeCol =  Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:141"),
+		roundCol =  Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:142"),
+		healthCol =  Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:143"),
+	},
+	
+}
+
+_round_is_combat = false
+Core_RegisterModule("MatchResultUI")
+
+function MatchResultUI_OnInit()
+	Rule_AddGlobalEvent(MatchResultUI_OnPlayerKilled, GE_PlayerKilled)
+end
+
+function MatchResultUI_Start()
+	MatchResultUI_UpdateContext()
+
+	Rule_AddInterval(MatchResultUI_UpdateUI, 1)
+	
+	UI_AddChild("ScarDefault", "XamlPresenter", _match_result_ui_data.name, { IsHitTestVisible = true, Xaml = _match_result_ui, DataContext = UI_CreateDataContext(_match_result_ui_data.context) })
+end
+
+function MatchResultUI_Show()
+	_match_result_ui_data.context.show = true
+	MatchResultUI_UpdateUI()
+end
+
+
+function MatchResultUI_hide()
+	_match_result_ui_data.context.show = false
+	MatchResultUI_UpdateUI()
+end
+
+function MatchResultUI_OnPlayerKilled(context)
+	Util_PrintTable(context)
+	if context.player ~= nil then 
+		MatchResultUI_AddDefeatPlayer(context.player)
+		
+		local contextPlayers = _match_result_ui_data.context.players
+		if (#PLAYERS - #contextPlayers)  <= 1 then 
+			for i, p in pairs(PLAYERS) do
+				if Player_IsAlive(p.id) then 
+					MatchResultUI_AddDefeatPlayer(p.id)
+				end
+			end
+			print("MatchResultUI_OnPlayerKilled")
+			HallUI_HideWhenDied()
+			MatchResultUI_Show()
+		end
+		local squadCards = PlayerCard_GetSquadCards(context.player)
+		if squadCards ~= nil and #squadCards > 0 then 
+			for _, squadCard in pairs(squadCards) do 
+				if squadCard.card ~= nil then 
+					print("release card")
+					SquadCards_DecreaPickedCard(squadCard.card)
+				end
+			end
+		end
+		
+		squadCards = PlayerCard_GetTempAreaSquadCards(context.player)
+		if squadCards ~= nil and #squadCards > 0 then 
+			for _, squadCard in pairs(squadCards) do 
+				if squadCard.card ~= nil then 
+					print("release card")
+					SquadCards_DecreaPickedCard(squadCard.card)
+				end
+			end
+		end
+	end
+end
+
+
+-- 更新UI
+function MatchResultUI_UpdateUI()
+	local contextPlayers = _match_result_ui_data.context.players
+	-- localPlayer 未存活 并且 轮次战斗未开始    或者   剩余玩家数低于2
+	if (not Player_IsAlive(localPlayer.id) and not _round_is_combat) or (#PLAYERS - #contextPlayers) <= 1  then 
+		--HallUI_HideWhenDied()
+		_match_result_ui_data.context.show = true
+	else 
+		_match_result_ui_data.context.show = false
+	end
+	
+	MatchResultUI_UpdateContext()
+
+	UI_SetDataContext(_match_result_ui_data.name, _match_result_ui_data.context)
+end
+
+
+function MatchResultUI_OnRoundStart()
+	_round_is_combat = false
+end
+
+function  MatchResultUI_OnCombatStart()
+	_round_is_combat = true
+end
+
+
+-- 更新ui数据
+function MatchResultUI_UpdateContext()
+	
+end
+
+function MatchResultUI_AddDefeatPlayer(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	local contextPlayers = _match_result_ui_data.context.players
+	local sec = World_GetGameTime()
+	local time = Util_FormatSecs(sec)
+	if Player_IsAlive(playerId) then 
+		time = "-"
+		sec = sec + 100
+	end
+	print("health:" .. player.health)
+	local contextPlayer = {
+		color = UI_GetColourAsString(Player_GetUIColour(player.id)),
+		civIcon = AdaptIconPathForXaml(World_GetRaceIcon(player.race)),
+		name = Player_GetDisplayName(player.id).LocString,
+		rank = #PLAYERS - #contextPlayers,
+		time = time,
+		sec = sec,
+		round = ConfigUtil_GetCurrentRound(),
+		health = player.health,
+		rankCol = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:140"),
+		nameCol = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:138"),
+		civCol = Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:139"),
+		elapsedTimeCol =  Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:141"),
+		roundCol =  Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:142"),
+		healthCol =  Loc_GetString("$aa0406c7490b4889acebb0e09301e10f:143"),
+	}
+	table.insert(contextPlayers, contextPlayer)
+	table.sort(contextPlayers, function(a, b) 
+			if a.sec > b.sec then 
+				return true
+			elseif a.sec == b.sec then 
+				if a.health > b.health then 
+					return true
+				else
+					return false
+				end
+			end 
+			return false
+			
+		end)
+	local leftPlayer = #PLAYERS - #contextPlayers
+	for i, playerData in pairs(contextPlayers) do 
+		playerData.rank = i + leftPlayer
+	end
+end 
+
+-- 刷新定时器
+function MatchResultUI_Interval()
+	
+end
