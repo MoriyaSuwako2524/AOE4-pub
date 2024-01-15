@@ -454,6 +454,7 @@ totalSquadsCount = 0
 -- 开始部署单位
 function Battle_OnDeploymentStart()
 	totalSquadsCount = 0
+	local player_villagers = {}
 	for i, player in pairs(PLAYERS) do 
 		PlayerMgr_ResetDeploySquadsData(player.id)
 		if Player_IsAlive(player.id) and player.hadEnemy then 
@@ -470,6 +471,10 @@ function Battle_OnDeploymentStart()
 			end
 			--]]
 			-- 玩家部署的分布
+			--local VillagerUnits = {{type = "scar_villager", numSquads = 10},}
+			--UnitEntry_DeploySquads(player.id, sg_villagers, VillagerUnits, spawnPos)
+			--local TcEntities = {{},}
+			--   Util_CreateEntities( player.id,Eg_Tcs, Integer blueprintID,spawnPos)
 			PlayerCard_Foreach(player.id, function(idx, playerId, card)
 					local squads = PlayerCard_GetSquadInCard(card)
 					local bpNames = {}

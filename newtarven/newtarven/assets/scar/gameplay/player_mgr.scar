@@ -7,7 +7,7 @@ Core_RegisterModule("PlayerMgr")
 
 function PlayerMgr_OnInit()
 	for i, player in pairs(PLAYERS) do 
-		Player_SetResource(player.id, RT_Food, 2)
+		Player_SetResource(player.id, RT_Food, 1)
 		Player_SetResource(player.id, RT_Gold, 0)
 		Player_SetResource(player.id, RT_Stone, 0)
 		Player_SetResource(player.id, RT_Wood, 0)
@@ -21,6 +21,9 @@ function PlayerMgr_OnInit()
 		player.streamerId = 0
 		player.streamerName = ""
 		player.StreamerPlatform = ""
+		player.TcCurrent = 1
+		player.TowerCurrent = 0
+		player.CalsCurrent = 0
 		player.TcAva = 3
 		player.CalsAva = 3
 		player.TowerAva= 5
@@ -32,11 +35,15 @@ end
 -- 轮次开始时
 function PlayerMgr_OnRoundStart()
 	local round = ConfigUtil_GetCurrentRound()
-	local food = round + 2
-	if food > 10 then 
-		food = 10
-	end
-	for i, player in pairs(PLAYERS) do 
+	local food = 0
+	local heal = 0
+	for i, player in pairs(PLAYERS) do
+		heal = player.TcCurrent * 10
+		player.health = player.health + heal
+		if player.health > player.healthlimit then
+			player.health = 100
+		end
+		food = math.ceil(player.health/10)
 		Player_SetResource(player.id, RT_Food, food)
 		local gold = Player_GetResource(player.id, RT_Gold)
 		Player_SetResource(player.id, RT_Gold, gold + 1)
@@ -253,6 +260,14 @@ end
 function PlayerMgr_GetSGroupBySpawnPosNew(playerId, posIdx)
 	local player = Core_GetPlayersTableEntry(playerId)
 	return player.spawnedSg["sg" ..  posIdx]
+end
+
+function PlayerMgr_GetSGroupOfVillager(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+		if player.VillagerSg == nil then 
+		player.VillagerSg = SGroup_CreateIfNotFound(string.format("VilSg_%s_", Player_GetID(player.id)))
+	end
+	return player.VillagerSg
 end
 
 function PlayerMgr_GetNcSg(playerId)

@@ -6,7 +6,7 @@ import("gameplay/player_mgr.scar")
 _tavern_config = {
 	options = {
 		common_settings = {
-			enable_auto_combat = true,
+			enable_auto_combat = false,
 			enable_match_ui = true,
 			enable_test_mode = false,
 		},

@@ -1,0 +1,1020 @@
+-- 战斗相关
+-- 为每位玩家分配对手
+
+import ("util/common_header.scar")
+import ("cards/player_cards.scar")
+import("gameplay/player_mgr.scar")
+import("gameplay/ground.scar")
+import("ui/battle_ui.scar")
+-- import("gameplay/battle_ai.scar")
+
+-- 已存在的对战组合
+_exists_battles = {
+	
+}
+
+_finished_battles = {
+	
+}
+
+_current_battles = {
+	
+}
+
+
+_grounds = {
+	{},{},{},{}
+}
+
+Core_RegisterModule("Battle")
+
+-- 为每位玩家分配对手
+function Battle_OnInit()
+	AI_EnableAll(false)
+	for i, player in pairs(PLAYERS) do 
+		-- 与每位玩家的战斗次数
+		player.combatCount = {}
+		for _, p in pairs(PLAYERS) do 
+			if p.id ~= player.id then 
+				-- 与其它玩家的遭遇的次数为0，当玩家被淘汰时，需要清理掉
+				player.combatCount["player_"..Player_GetID(p.id)] = 0
+			end
+		end
+		-- 当前轮是否有对手
+		player.hadEnemy = false
+		-- 单位部署位置
+		player.spawnPos = nil
+		-- 所在场地
+		player.ground = nil
+		no_enemy_counts["player_" .. Player_GetID(player.id)] = 0
+	end
+	
+
+end
+
+
+function Battle_Start()
+	
+end
+
+-- 无对手统计
+no_enemy_counts = {
+	
+}
+
+last_no_enemy_playerId = nil
+
+-- 轮空玩家选举
+function Battle_NoEnemyPlayerSelector()
+	local livePlayers = {}
+	
+	local isSkipLastPlayer = false
+	for i, player in pairs(PLAYERS) do 
+		if Player_IsAlive(player.id) then 
+			if player.id == last_no_enemy_playerId then 
+				isSkipLastPlayer = true
+			else
+				table.insert(livePlayers, player.id)
+			end
+		end
+	end
+	
+	local noEnemyPlayerId = nil 
+	local livePlayersCount = #livePlayers
+	if isSkipLastPlayer then 
+		livePlayersCount = livePlayersCount + 1
+	end
+	
+	-- 存活玩家不存在
+	-- 跳过了上一位轮空的玩家的话，如果当前玩家数为奇数，就需要跳过
+	-- 没有跳过的话，如果当前玩家数为偶数，就需要跳过
+	if #livePlayers == 0 or livePlayersCount %2 == 0 then 
+		last_no_enemy_playerId = nil
+		return nil
+	end
+	
+	
+	
+	if last_no_enemy_playerId ~= nil then 
+		print("no enemy playerid : " .. Player_GetID(last_no_enemy_playerId))
+	end
+	
+	local minCount = 9999
+	local canSelector = {}
+	local reSelector = true
+	local temp_no_enemy_counts = Clone(no_enemy_counts)
+	if livePlayersCount == 3 then 
+		--- 如果只有三位玩家存活时，需要判断下是否有在上轮碰过了的，如果有，就需要在这两位中挑选一位
+		for i, player in pairs(PLAYERS) do 
+			-- 玩家存活，存在对手，且对手存活
+			if Player_IsAlive(player.id) and player.enemy ~= nil and Player_IsAlive(player.enemy.id) then 
+				local key1 = "player_" .. Player_GetID(player.id)
+				local key2=  "player_" .. Player_GetID(player.enemy.id)
+				--table.insert(canSelector, Player_GetID(player.id))
+				--table.insert(canSelector, Player_GetID(player.enemy.id))
+				temp_no_enemy_counts = {}
+				temp_no_enemy_counts[key1] = no_enemy_counts[key1]
+				temp_no_enemy_counts[key2] = no_enemy_counts[key2]
+				reSelector = false 
+				break
+			end
+		end
+		
+	end 
+	
+		
+	for key, count in pairs(temp_no_enemy_counts) do 
+		local id = tonumber(string.split(key, "_")[2])
+		if last_no_enemy_playerId == nil or id ~= tonumber(Player_GetID(last_no_enemy_playerId)) then 
+			if minCount > count then 
+				minCount = count
+			end
+		end
+	end
+	
+	
+	for key, count in pairs(temp_no_enemy_counts) do 
+		local id = tonumber(string.split(key, "_")[2])
+		if minCount == count and (last_no_enemy_playerId == nil or id ~= tonumber(Player_GetID(last_no_enemy_playerId))) then 
+
+			print(string.format("can selector %s, num: %s, minCount: %s ", id, count, minCount))
+
+			table.insert(canSelector, id)
+		end
+	end
+	
+	
+	
+	table.sort(canSelector)
+	local rand = World_GetRand(1, #canSelector)
+	local id = canSelector[rand]
+	noEnemyPlayerId = Player_FromId(id)
+	last_no_enemy_playerId = noEnemyPlayerId
+	no_enemy_counts["player_" .. id] = no_enemy_counts["player_" .. id] + 1
+	return noEnemyPlayerId
+
+end
+
+function Battle_OnRoundStart()
+	_finished_battles = {}
+	_current_battles = {}
+	local grounds = {1, 2, 3, 4}
+	local diedPlayers = {}
+	local tempPlayers = {}
+	
+	local noEnemyPlayerId = Battle_NoEnemyPlayerSelector()
+
+	
+	-- 需要打乱玩家顺序, 防止轮空时，总是最后一个玩家轮空
+	for i, player in pairs(PLAYERS) do 
+		-- 将所有玩家指定为还没有对手
+		player.hadEnemy = false
+		player.isWin = nil
+		-- 上一轮对手
+		player.prevEnemy = player.enemy
+		player.enemy = nil
+		PlayerMgr_SetRoundDeduceHealth(player.id, 0)
+		table.insert(tempPlayers, player)
+	end
+	
+	local mixedPlayers = {}
+	
+	local playerCount = #tempPlayers
+	for i = 1, playerCount do 
+		local idx = World_GetRand(1, #tempPlayers)
+		local player = tempPlayers[idx]
+		table.remove(tempPlayers, idx)
+		if player.id ~= noEnemyPlayerId then 
+			table.insert(mixedPlayers, player)
+		end
+	end
+	
+	for i, player in pairs(mixedPlayers) do 
+		
+		if not Player_IsAlive(player.id) then 
+			table.insert(diedPlayers, player.id)
+		end
+	end
+	
+	for i, player in pairs(mixedPlayers) do 
+		-- 只处理还活着的并且当前轮还没有指定对手的玩家
+		if Player_IsAlive(player.id) and not player.hadEnemy then 
+			local min = 999 
+			
+			-- 可以匹配的对手
+			local matchesAvaEnemies = {}
+			
+			-- 移除已经失败的玩家
+			for _, diedPlayerId in pairs(diedPlayers) do 
+				--table.remove(player.combatCount, "player_" .. Player_GetID(diedPlayerId))
+				player.combatCount["player_" .. Player_GetID(diedPlayerId)] = nil
+			end
+			
+			-- 获得最小的次数
+			local totalCount = 0
+			
+			for key, count in pairs(player.combatCount) do 
+				local enemyId = Player_FromId(tonumber(string.split(key, "_")[2])) 
+				local enemy = Core_GetPlayersTableEntry(enemyId)
+				-- 如果此轮对手还没有匹配到，那就可以统计进去
+				if not enemy.hadEnemy and enemyId ~= noEnemyPlayerId  then 
+					totalCount = totalCount + 1
+					if min > count then 
+						min = count
+					end 
+					matchesAvaEnemies[key] = count
+				end
+			end
+			
+			-- 匹配次数相同的对手有多少个
+			local matchCount = 0
+			for key, count in pairs(matchesAvaEnemies) do 
+				if min == count then 
+					matchCount = matchCount + 1
+				end
+			end
+			
+			-- 待选择对手列表
+			local forElectionEnemies = {}
+			local leftEnemies = {}
+			local minMatchedTimes = 999
+			for key, count in pairs(matchesAvaEnemies) do 
+				-- 如果匹配次数都相同，那就是都可以作为对手了. 如果不同时，则需要都是最小次数
+				if matchCount == totalCount or count == min then 
+					table.insert(forElectionEnemies, key)
+				else 
+				    table.insert(leftEnemies, key)
+				    
+				    if player.combatCount[key] < minMatchedTimes then 
+				        minMatchedTimes = player.combatCount[key]
+				    end
+				    
+				end 
+			end
+			
+			
+			local forElectionEnemiesCount = #forElectionEnemies
+		    -- print("待选：" .. #forElectionEnemies)
+			local lastRoundEnemyMap = {}
+			for j, p in pairs(mixedPlayers) do 
+			  if not p.hadEnemy and p.prevEnemy ~= nil and not p.prevEnemy.hadEnemy 
+			    --and Player_GetID(p.prevEnemy.id) == nil 
+			    then 
+			      lastRoundEnemyMap[tonumber(Player_GetID(p.id))] = tonumber(Player_GetID(p.prevEnemy.id))
+			  end
+			end
+		     
+	        if #forElectionEnemies == 1 and #leftEnemies == 2 then 
+				
+	            local lastRoundIsEnemyFlag = player.prevEnemy ~= nil 
+	            and Player_GetID(player.prevEnemy.id) == tonumber(string.split(forElectionEnemies[1], "_")[2])
+	            
+	             table.sort(leftEnemies)
+	             
+	             local leftEnemyKey1 = leftEnemies[1]
+		         local leftEnemyKey2 = leftEnemies[2]
+		         local leftEnemyId1 = tonumber(string.split(leftEnemyKey1, "_")[2])
+		         local leftEnemyId2 = tonumber(string.split(leftEnemyKey2, "_")[2])
+	             
+	            local leftPlayerLastRoundIsEnemyFlag = lastRoundEnemyMap[leftEnemyId2] == leftEnemyId1 
+	            if lastRoundIsEnemyFlag or leftPlayerLastRoundIsEnemyFlag then 
+	                table.remove(forElectionEnemies, 1)
+	               
+    		        if player.combatCount[leftEnemyKey1] == minMatchedTimes then 
+	                    table.insert(forElectionEnemies, leftEnemyKey1)
+	                else 
+	                   table.insert(forElectionEnemies, leftEnemyKey2)
+	                end
+    		        
+	            end
+	       end
+			
+			
+			
+			local forElectionEnemiesCount = #forElectionEnemies
+			--[[
+			-- 如果剩下三人，且三人中在上一轮中交战了，也要剔除其中一人
+			if forElectionEnemiesCount == 3 then
+				-- 存储上一轮为对手的玩家
+				local lastRoundEnemies = {}
+				local leftPlayerIds = {}
+				for _, enemyKey in pairs(forElectionEnemies) do 
+					local eid = tonumber(string.split(enemyKey, "_")[2])
+					table.insert(leftPlayerIds, eid)
+				end
+				
+				table.sort(leftPlayerIds)
+				for _, eid in pairs(leftPlayerIds) do 
+					local ePlayer = Core_GetPlayersTableEntry(Player_FromId(eid))
+					local eEnemy = ePlayer.prevEnemy
+					if eEnemy ~= nil then 
+						local eEnemyId = Player_GetID(eEnemy.id)
+						if Table_Contains(leftPlayerIds, eEnemyId) then 
+							-- 那就移除一个
+							local tempKey = "player_" .. eEnemyId
+							Table_RemoveFirstItem(forElectionEnemies, tempKey)
+							break
+						end
+					end
+				end
+			end
+			--]]
+				
+			forElectionEnemiesCount = #forElectionEnemies
+			if forElectionEnemiesCount > 1 and player.prevEnemy ~= nil then 
+				-- 要剔除上一轮遇到过的
+				local tempKey = "player_" .. Player_GetID(player.prevEnemy.id)
+				Table_RemoveFirstItem(forElectionEnemies, tempKey)
+			end
+			
+			
+			forElectionEnemiesCount = #forElectionEnemies
+			if forElectionEnemiesCount >= 2 then
+				
+				
+				local tempMap = {}
+				-- 如果玩家在上轮的对手都已经在这轮匹配了，那就需要考虑移除，防止剩下的玩家没有匹配
+				local notHadKeys = {}
+				
+				for _, enemyKey in pairs(forElectionEnemies) do 
+					local eid = tonumber(string.split(enemyKey, "_")[2])
+					if lastRoundEnemyMap[eid] == nil then 
+						table.insert(notHadKeys, enemyKey)    
+					end
+					tempMap[eid] = 1 
+				end   
+				
+				if (forElectionEnemiesCount - #notHadKeys ) ~= 0 then 
+					for _, key in pairs(notHadKeys) do 
+						Table_RemoveFirstItem(forElectionEnemies, key)
+					end 
+				end
+			end
+			
+			
+			
+			-- 如果剩下三人，且三人中在上一轮中交战了，也要剔除其中一人
+			forElectionEnemiesCount = #forElectionEnemies
+			if forElectionEnemiesCount == 3 then
+				-- 存储上一轮为对手的玩家
+				local lastRoundEnemies = {}
+				local leftPlayerIds = {}
+				for _, enemyKey in pairs(forElectionEnemies) do 
+					local eid = tonumber(string.split(enemyKey, "_")[2])
+					table.insert(leftPlayerIds, eid)
+				end
+				
+				table.sort(leftPlayerIds)
+				local lastRoundHadEnemyFlag = false  -- 剩余的玩家中是否在上轮互为对手
+				
+            
+				
+				
+				local keeped = {}
+				for _, eid in pairs(leftPlayerIds) do 
+					local ePlayer = Core_GetPlayersTableEntry(Player_FromId(eid))
+					local eEnemy = ePlayer.prevEnemy
+					if eEnemy ~= nil then 
+						local eEnemyId = Player_GetID(eEnemy.id)
+						if Table_Contains(leftPlayerIds, eEnemyId) then 
+							-- 那就移除一个
+							local tempKey = "player_" .. eEnemyId
+							--Table_RemoveFirstItem(forElectionEnemies, tempKey)
+							--Table_RemoveFirstItem(forElectionEnemies, "player_" .. eid)
+							table.insert(keeped, tempKey)
+							table.insert(keeped, "player_" .. eid)
+							break
+						end
+					end
+			    end
+			    if #keeped > 0 then 
+			        forElectionEnemies = keeped
+			    end
+			
+	        end
+	       
+			
+			
+			
+			table.sort(forElectionEnemies)
+			
+			
+			if #forElectionEnemies > 0 then 
+				-- 随机得到比赛对手
+				local selectedIdx = World_GetRand(1, #forElectionEnemies)
+				local enemyKey = forElectionEnemies[selectedIdx]
+				local enemyId = Player_FromId(string.split(enemyKey, "_")[2]) 
+				local enemy = Core_GetPlayersTableEntry(enemyId)
+				
+				player.hadEnemy = true
+				player.combatCount[enemyKey] = player.combatCount[enemyKey] + 1
+				
+				-- 也要为对手更新相关信息
+				enemy.hadEnemy = true
+				local playerKey = "player_"..Player_GetID(player.id)
+				enemy.combatCount[playerKey] = enemy.combatCount[playerKey] + 1
+				
+				-- 获得比赛场地
+				local groundIdx = World_GetRand(1, #grounds)
+				local ground = grounds[groundIdx]
+				--print(string.format("ground: rand-%s, idx-%s", groundIdx, ground))
+				table.remove(grounds, groundIdx)
+				
+				player.ground = ground
+				enemy.ground = ground
+				
+				local groundSpawnPos = Ground_GetSpawnPos(ground)
+				player.spawnPos = groundSpawnPos[1]
+				enemy.spawnPos = groundSpawnPos[2]
+				
+				--print(string.format("combatplayers: %s vs %s", Player_GetID(player.id), Player_GetID(enemy.id)))
+				
+				table.insert(_current_battles, {
+						player, enemy
+					})
+				
+				
+				
+				-- 当前轮对手
+				player.enemy = enemy 
+				enemy.enemy = player
+			end
+			
+		end
+	end
+	
+	if not localPlayer.hadEnemy then 
+		-- 没有分配对手时，提示轮空
+		UI_CreateEventCue(Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:122"), nil, "", "", "sfx_ui_event_queue_high_priority_play")
+	end
+end
+
+totalSquadsCount = 0
+
+-- 开始部署单位
+function Battle_OnDeploymentStart()
+	totalSquadsCount = 0
+	local player_villagers = {}
+	for i, player in pairs(PLAYERS) do 
+		PlayerMgr_ResetDeploySquadsData(player.id)
+		if Player_IsAlive(player.id) and player.hadEnemy then 
+			local spawnPos = player.spawnPos
+			--[[
+			if Misc_IsDevMode() and not player.isHuman then 
+				local sg = PlayerMgr_GetSGroupBySpawnPos(player.id, 3)
+				--UnitEntry_DeploySquads(player.id, sg, {{sbp = SBP.FRENCH.UNIT_CANNON_4_FRE, numSquads = 2 }},  spawnPos)
+				--UnitEntry_DeploySquads(player.id, sg, {{sbp = SBP.FRENCH.UNIT_MANGONEL_3_FRE, numSquads = 2 }},  spawnPos)
+				UnitEntry_DeploySquads(player.id, sg, {{sbp = SBP.FRENCH.UNIT_HORSEMAN_4_FRE, numSquads = 40 }},  spawnPos)
+				UnitEntry_DeploySquads(player.id, sg, {{sbp = SBP.FRENCH.UNIT_ARCHER_4_FRE, numSquads = 20 }},  spawnPos)
+				UnitEntry_DeploySquads(player.id, sg, {{sbp = SBP.FRENCH.UNIT_SPEARMAN_3_FRE, numSquads = 20 }},  spawnPos)
+				SGroup_AddGroup(PlayerMgr_GetSg(player.id), sg)
+			end
+			--]]
+			-- 玩家部署的分布
+			--local VillagerUnits = {{type = "scar_villager", numSquads = 10},}
+			--UnitEntry_DeploySquads(player.id, sg_villagers, VillagerUnits, spawnPos)
+			--local TcEntities = {{},}
+			--   Util_CreateEntities( player.id,Eg_Tcs, Integer blueprintID,spawnPos)
+			PlayerCard_Foreach(player.id, function(idx, playerId, card)
+					local squads = PlayerCard_GetSquadInCard(card)
+					local bpNames = {}
+					for bpName, count in pairs(squads) do 
+						table.insert(bpNames, bpName)
+					end
+					table.sort(bpNames)
+					local p  = Core_GetPlayersTableEntry(playerId)
+					-- Util_PrintTable(squads)
+					local sg = PlayerCard_GetSG(card)
+					local spawnPosIdx = PlayerCard_GetSquadCardSpawnPosIdx(playerId, card)
+					local spawnPosList = Ground_GetSpawnPosList(playerId)
+					for _, bpName in pairs(bpNames) do 
+						if bpName ~= nil then 
+							local count = squads[bpName]
+							if ConfigUtil_IsTestMode() then 
+								--count = count * 2
+							end
+							local race = Util_GetRaceBySBP(bpName)
+							local units = {{sbp = BP_GetSquadBlueprint(bpName), numSquads = count }}
+							-- print(string.format("%s====%s", bpName, count))
+							--if Util_SquadIsSiege(race, bpName) and not Util_SquadIsMangonel(race, bpName) then 
+								-- 是攻城器械，但不是拍车类，就需要单独放在一个SG里面
+							--	UnitEntry_DeploySquads(playerId, PlayerMgr_GetNcSg(playerId), units, spawnPosList[spawnPosIdx])
+							--else
+							UnitEntry_DeploySquads(playerId, sg, units, spawnPosList[spawnPosIdx])
+							PlayerMgr_UpdateDeploySquadsData(playerId, AREA_STANDARD, idx)
+							--end
+						end
+					end
+					
+					local posSg = PlayerMgr_GetSGroupBySpawnPos(playerId, spawnPosIdx)
+					SGroup_AddGroup(posSg, sg)
+					local tempSg = SGroup_CreateIfNotFound(string.format("tempBSg_%s_%s",Player_GetID(playerId), spawnPosIdx))
+					local filterFunc = function(tgid, tidx, sid) 
+						if Squad_IsAlive(sid) and BP_GetName(Squad_GetBlueprint(sid)) == "unit_great_bombard_4_ott" then 
+							SGroup_Add(tempSg, sid)
+						end
+					end
+					SGroup_ForEach(posSg, filterFunc)
+					--SGroup_Filter(posSg, {"unit_great_bombard_4_ott"}, FILTER_REMOVE, tempSg)
+					SGroup_Filter(posSg, {"bombard", "culverin", "springald", "scar_cannon"}, FILTER_REMOVE)
+					SGroup_AddGroup(posSg, tempSg)
+					SGroup_AddGroup(PlayerMgr_GetSg(playerId), sg)
+			end)
+			totalSquadsCount = SGroup_Count(Player_GetSquads(player.id))
+		end
+	end
+	
+	if totalSquadsCount > 1100 and not UI_IsReplay() then 
+		UI_CreateEventCue(Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:144", totalSquadsCount), nil, "", "", "sfx_ui_event_queue_high_priority_play")
+	end
+	
+	if ConfigUtil_IsAutoCombat() then 
+		Game_SetInputEnabledFlag(3)
+		--Game_SetInputEnabledFlag(Game_ConvertInputEnabledFlagEnumToInt(IEF_All))
+	end
+end
+
+
+function Battle_OnDeploymentEnd()
+	--[[
+	for i, player in pairs(PLAYERS) do 
+		if Player_IsAlive(player.id) then 
+			local sg = Player_GetSquads(player.id)
+			if sg ~= nil and SGroup_Count(sg) > 0 then 
+				local ground = player.ground
+				local center = Ground_GetCenterPos(ground)
+				Cmd_Ability(sg, BP_GetAbilityBlueprint("core_formation_line"), SGroup_GetPosition(sg) , center, false, false )
+			end
+		end
+	end
+	--]]
+	for i, player in pairs(PLAYERS) do 
+		if Player_IsAlive(player.id) then 
+			player.manuallyAttackSec = -999
+			local sg = Player_GetSquads(player.id)
+			if sg ~= nil and SGroup_Count(sg) > 0 then 
+				
+				
+				local ground = player.ground
+				local center = Ground_GetCenterPos(ground)
+				local sgNames = {}
+				for sgName,_ in pairs(player.spawnedSg) do 
+					table.insert(sgNames, sgName)
+				end
+				table.sort(sgNames)
+				for _, sgName in pairs(sgNames) do 
+					local tempSg = player.spawnedSg[sgName]
+					local pos = Util_DismissErrors(nil, function() return SGroup_GetPosition(tempSg) end)
+					if pos ~= nil then 
+						Cmd_Ability(tempSg, BP_GetAbilityBlueprint("core_formation_line"), pos, center, false, false )
+					end
+				end 
+			end
+		end
+	end
+end
+
+
+function Battle_OnCombatStart()
+	for i, player in pairs(PLAYERS) do 
+		player.hadNc = true
+		player.hadMonk = true
+		player.hadPc = true
+
+	end
+	_battle_interval_count = 0
+	for i, player in pairs(PLAYERS) do 
+		if Player_IsAlive(player.id) then 
+			local sg = Player_GetSquads(player.id)
+
+			if sg ~= nil and SGroup_Count(sg) > 0 then 
+				Modify_SightRadius(sg, 10)
+				local ground = player.ground
+				local center = Ground_GetCenterPos(ground)
+				local sgNames = {}
+				for sgName,_ in pairs(player.spawnedSg) do 
+					table.insert(sgNames, sgName)
+				end
+				table.sort(sgNames)
+				for _, sgName in pairs(sgNames) do 
+					local tempSg = player.spawnedSg[sgName]
+					Cmd_FormationMove(tempSg, center)
+				end
+			end
+		end
+	end
+	Rule_AddInterval(Battle_BattleCheckInterval, 1)
+end
+
+
+_battle_interval_count = 0
+
+-- 检测战斗情况
+function Battle_BattleCheckInterval()
+	local endSessions = 0
+	local countSessions = 0
+	_battle_interval_count = _battle_interval_count + 1
+	
+	
+	if _battle_interval_count < 8 and _battle_interval_count %2 == 0 and totalSquadsCount > 1100 and not UI_IsReplay() then 
+		UI_CreateEventCue(Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:144", totalSquadsCount), nil, "", "", "sfx_ui_event_queue_high_priority_play")	
+	end
+	
+	for i, players in pairs(_current_battles) do 
+		countSessions =  countSessions + 1
+		if Util_TableContains(_finished_battles, i) then 
+			endSessions = endSessions + 1
+		else 
+			local playerA = players[1]
+			local playerB = players[2]
+			local playerASg = Player_GetSquads(playerA.id)
+			local playerBSg = Player_GetSquads(playerB.id)
+			local playerASgCount = SGroup_Count(playerASg)
+			local playerBSgCount = SGroup_Count(playerBSg)
+			
+			
+			
+			local loseDeduceHealth = 8 + math.floor(ConfigUtil_GetCurrentRound() * 1.5)
+			local leftTime = TavernRound_GetCombatLeftTime() 
+			-- 如果战斗时间已经到了
+			if leftTime <= 0 then 
+				local playerAPrice = Battle_GetPlayerSgPrice(playerA.id)
+				local playerBPrice = Battle_GetPlayerSgPrice(playerB.id)
+				loseDeduceHealth = Battle_GetDeduceHealth(playerAPrice, playerBPrice)
+				if playerAPrice == playerBPrice then 
+					print(string.format("tie"))
+					PlayerMgr_DeduceHealth(playerA.id, 8)
+					PlayerMgr_DeduceHealth(playerB.id, 8)
+					PlayerMgr_SetRoundDeduceHealth(playerA.id, 8)
+					PlayerMgr_SetRoundDeduceHealth(playerB.id, 8)
+				elseif playerAPrice > playerBPrice then 
+					print(string.format("%s lose", Player_GetDisplayName(playerB.id)))
+					PlayerMgr_DeduceHealth(playerB.id, loseDeduceHealth)
+					PlayerMgr_SetRoundDeduceHealth(playerB.id, loseDeduceHealth)
+				else 
+					print(string.format("%s lose", Player_GetDisplayName(playerA.id)))
+					PlayerMgr_DeduceHealth(playerA.id, loseDeduceHealth)
+					PlayerMgr_SetRoundDeduceHealth(playerA.id, loseDeduceHealth)
+				end
+			else
+				if playerASgCount == 0 or playerBSgCount == 0 then 
+					local playerAPrice = Battle_GetPlayerSgPrice(playerA.id)
+					local playerBPrice = Battle_GetPlayerSgPrice(playerB.id)
+					loseDeduceHealth = Battle_GetDeduceHealth(playerAPrice, playerBPrice)
+				end
+				if playerASgCount == playerBSgCount and playerASgCount == 0 then 
+					print(string.format("tie"))
+					PlayerMgr_DeduceHealth(playerA.id, 8)
+					PlayerMgr_DeduceHealth(playerB.id, 8)
+					PlayerMgr_SetRoundDeduceHealth(playerA.id, 8)
+					PlayerMgr_SetRoundDeduceHealth(playerB.id, 8)
+				elseif playerASgCount == 0 then 
+					print(string.format("%s lose", Player_GetDisplayName(playerA.id)))
+					PlayerMgr_DeduceHealth(playerA.id, loseDeduceHealth)
+					PlayerMgr_SetRoundDeduceHealth(playerA.id, loseDeduceHealth)
+				elseif playerBSgCount == 0 then
+					print(string.format("%s lose", Player_GetDisplayName(playerB.id)))
+					PlayerMgr_DeduceHealth(playerB.id, loseDeduceHealth)
+					PlayerMgr_SetRoundDeduceHealth(playerB.id, loseDeduceHealth)
+				end
+				
+			end
+			
+			if playerASgCount == 0 or playerBSgCount == 0 or leftTime <= 0 then 
+				endSessions = endSessions + 1
+				table.insert(_finished_battles, i)
+			end
+			
+			local playerASmallSg = PlayerMgr_GetSg(playerA.id)
+			local playerBSmallSg = PlayerMgr_GetSg(playerB.id)
+			if playerASgCount > 0 then 
+				if _battle_interval_count == 5 then 
+					Modify_UnitSpeed(playerASg, 6)
+				end
+				Battle_AIAttack(playerA, playerB, playerASmallSg, playerBSg)
+			end
+			
+			if playerBSgCount > 0 then 
+				if _battle_interval_count == 3 then 
+					Modify_UnitSpeed(playerBSg, 8)
+				end
+				Battle_AIAttack(playerB, playerA, playerBSmallSg, playerASg)
+			end
+			
+		end
+	end
+	
+	
+	
+	-- 都结束了
+	if endSessions == countSessions then 
+		Rule_Remove(Battle_BattleCheckInterval)
+		TavernRound_CombatEnd()
+	end
+end
+
+
+function Battle_GetDeduceHealth(playerAPrice, playerBPrice)
+	local diffPrice = math.abs(playerAPrice - playerBPrice)
+	local health = 6 + math.floor(diffPrice/(280 + 10 * ConfigUtil_GetCurrentRound()))
+	if ConfigUtil_GetCurrentRound() > 10 then 
+		health = health + ConfigUtil_GetCurrentRound() - 10
+	end
+	if health > 35 then 
+		health = 35
+	end
+	return health
+end
+
+-- 是否有攻城器
+_ground_had_sige = {
+	true, true, true, true
+}
+
+function Battle_AIAttack(playerA, playerB, playerASg, playerBSg)
+	
+	-- 如果是AI或者开启了自动战斗
+	if not playerA.isHuman or ConfigUtil_IsAutoCombat() then 
+		if playerA.manuallyAttackSec ~= nil and _battle_interval_count <= playerA.manuallyAttackSec + 3 then 
+			return
+		end
+		-- 先分配弩车了单位攻击
+		local ncNeedAttack = playerA.hadNc and (playerB.hadPc or playerB.hadNc)
+		
+		local pos = Util_DismissErrors(nil, function() return SGroup_GetPosition(playerBSg) end)
+		
+		local groundIdx = playerA.ground
+		local center = Ground_GetCenterPos(groundIdx)
+		if _battle_interval_count % 3 == 1 then 
+			--print("ncNeedAttack 0")
+			local ncSg = Battle_GetNcSg(playerA.id)
+			if ncNeedAttack then 
+				print("ncNeedAttack 1")
+				if SGroup_Count(ncSg) == 0 then 
+					--print("ncNeedAttack 2")
+					playerA.hadNc = false
+				else 
+					local playerBPcSg = Battle_GetPcSg(playerB.id)
+					
+					if SGroup_Count(playerBPcSg) > 0 then 
+						--print("nc attack.........")
+						--SGroup_Filter(playerASg, {"bombard", "culverin", "springald", "scar_cannon"}, FILTER_REMOVE)
+						Cmd_Attack(ncSg, playerBPcSg, false)
+						--Cmd_Attack(ncSg, playerBSg, true)
+						--Battle_AttackMove(ncSg, playerBPcSg, pos, true)
+						--Battle_Attack(ncSg, playerBPcSg, playerBSg)
+						--print("ncNeedAttack 4")
+					else 
+						Battle_AttackMove(ncSg, playerBSg, pos, false)
+						--print("ncNeedAttack 3")
+						playerB.hadPc = false
+					end
+				end
+			elseif SGroup_Count(ncSg) > 0 then 
+				--print("ncNeedAttack 5")
+				Battle_AttackMove(ncSg, playerBSg, pos, true)
+			end
+		end
+		
+		
+		for posIdx = 1, 10 do 
+			local sg = PlayerMgr_GetSGroupBySpawnPosNew(playerA.id, posIdx)
+			if sg ~= nil and SGroup_Count(sg) > 0 then 
+				--local tempSg = SGroup_CreateIfNotFound(string.format("attackSg_%s_%s", posIdx, Player_GetID(playerA.id)))
+				--SGroup_Clear(tempSg)
+				--SGroup_AddGroup(tempSg, sg)
+				Battle_DoAIAttack(playerA, playerB, sg, playerBSg, posIdx)
+			end
+		end
+		--[[
+		local checkSecond = 6
+		local currentRound = ConfigUtil_GetCurrentRound()
+		if  currentRound < 6 then 
+			checkSecond = 14
+		elseif currentRound < 10 then 
+			checkSecond = 9
+		end
+		
+		if SGroup_Count(playerASg) > 180 and SGroup_Count(playerBSg) > 180 and _battle_interval_count <= (checkSecond + 2) then 
+			checkSecond = 6
+			-- pos = center
+		end
+		--]]
+         
+		--[[
+		
+		if _battle_interval_count < 15 then 
+			Battle_AttackMove(playerASg, playerBSg, pos, false)
+		else 
+			Battle_AttackMove(playerASg, playerBSg, pos, true)
+		end
+		--]]
+		
+		
+		--[[
+		if _battle_interval_count == 1 then 
+			local playerBPcSg = Battle_GetPcSg(playerB.id)
+
+			if SGroup_Count(playerBPcSg) > 0 then 
+				--print("playerBPcSg > 0 : " .. SGroup_Count(playerASg))
+				SGroup_Filter(playerASg, {"bombard", "culverin", "springald"}, FILTER_REMOVE)
+				local ncSg = Battle_GetNcSg(playerA.id)
+				if SGroup_Count(ncSg) > 0 then 
+					--print("ncSg > 0 " .. SGroup_Count(playerASg))
+					Battle_Attack(ncSg, playerBPcSg, playerBSg)
+				end
+			end
+		end
+		
+		if _battle_interval_count == 1 then 
+			local pos = Util_DismissErrors(nil, function() return SGroup_GetPosition(playerBSg) end)
+			Battle_AttackMove(playerASg, playerBSg, pos)
+		else 
+			Battle_AttackMove(playerASg, playerBSg, center)
+		end
+		
+		local pos = Util_DismissErrors(nil, function() return SGroup_GetPosition(playerBSg) end)
+		Battle_AttackMove(playerASg, playerBSg, pos, false)
+		--]]
+		--[[
+		if _battle_interval_count < 8 then 
+			Battle_AttackMove(playerASg, playerBSg, pos, false)
+		elseif _battle_interval_count == 8 then 
+			Battle_AttackMove(playerASg, playerBSg, center, true)
+		else 
+			Battle_AttackMove(playerASg, playerBSg, pos, false)
+		end
+		--]]
+
+	end
+end
+
+
+
+function Battle_DoAIAttack(playerA, playerB, playerASg, playerBSg, spawnPosIdx)
+	
+	
+	-- 如果是AI或者开启了自动战斗
+	if not playerA.isHuman or ConfigUtil_IsAutoCombat() then 
+		local groundIdx = playerA.ground
+		local center = Ground_GetCenterPos(groundIdx)
+		local pos = Util_DismissErrors(nil, function() return SGroup_GetPosition(playerBSg) end)
+		
+		local attackPos = Ground_GetAttackedPos(playerB.id, spawnPosIdx)
+		
+		if _battle_interval_count < 15 then 
+			if Ground_IsFlank(spawnPosIdx) then 
+				if not SGroup_IsAttackMoving(playerASg, ANY) and not SGroup_IsDoingAttack(playerASg, ANY, 5) then
+					Cmd_AttackMove(playerASg, attackPos, false, 100000)
+					if pos ~= nil then 
+						Cmd_AttackMove(playerASg, pos, true, 100000)
+					end
+				end
+			else 
+				Battle_AttackMove(playerASg, playerBSg, pos, false)
+			end
+		else 
+			Battle_AttackMove(playerASg, playerBSg, pos, true)
+		end
+		
+		
+	end
+	
+end
+
+function Battle_Attack(playerASg, playerBSg, playerBSecondSg)
+	--if not SGroup_IsDoingAttack(playerASg, ALL, 5)  then
+	--print(string.format("playerASg Count: %s, playerBSg Count:%s " , SGroup_Count(playerASg), SGroup_Count(playerBSg)))
+	Cmd_Attack(playerASg, playerBSg)
+	Cmd_Attack(playerASg, playerBSecondSg, true)
+	--end
+end
+
+function Battle_AttackMove(playerASg, playerBSg, pos, checkIdle, spawnPosIdx)
+	if checkIdle then 
+		if SGroup_IsIdle(playerASg, ANY) or not SGroup_IsDoingAttack(playerASg, ANY, 5) then
+			if pos ~= nil then 
+				Cmd_AttackMove(playerASg, pos, false, 100000)
+			end
+		end
+	else
+		-- 如果有单位没有处于移动攻击，并且有单位最近几秒钟没有攻击   and not SGroup_IsDoingAttack(playerASg, ANY, 5)
+		if not SGroup_IsAttackMoving(playerASg, ANY) and not SGroup_IsDoingAttack(playerASg, ANY, 5) then
+			if pos ~= nil then 
+				Cmd_AttackMove(playerASg, pos, false, 100000)
+			end
+		end
+	end
+	
+end
+
+function Battle_GetPcSg(playerId)
+	local pcSg = Player_GetSquadsFromType(playerId, "scar_trebuchet")
+	SGroup_AddGroup(pcSg, Player_GetSquadsFromType(playerId, "nest_of_bees"))
+	SGroup_AddGroup(pcSg, Player_GetSquadsFromType(playerId, "mangonel"))
+	SGroup_AddGroup(pcSg, Player_GetSquadsFromType(playerId, "ribauldequin"))
+	SGroup_AddGroup(pcSg, Player_GetSquadsFromType(playerId, "trebuchet"))
+	SGroup_AddGroup(pcSg, Player_GetSquadsFromType(playerId, "bombard"))
+	SGroup_AddGroup(pcSg, Player_GetSquadsFromType(playerId, "culverin"))
+	SGroup_AddGroup(pcSg, Player_GetSquadsFromType(playerId, "springald"))
+	SGroup_AddGroup(pcSg, Player_GetSquadsFromType(playerId, "scar_cannon"))
+	return pcSg 
+end
+
+function Battle_GetNcSg(playerId)
+	local ncSg =  Player_GetSquadsFromType(playerId, "bombard")
+	SGUtil_RemoveSquadByBpName(ncSg, "unit_great_bombard_4_ott")
+	SGroup_Filter(ncSg, {"unit_great_bombard_4_ott"}, FILTER_REMOVE)
+	SGroup_AddGroup(ncSg, Player_GetSquadsFromType(playerId, "culverin"))
+	SGroup_AddGroup(ncSg, Player_GetSquadsFromType(playerId, "springald"))
+	SGroup_AddGroup(ncSg, Player_GetSquadsFromType(playerId, "scar_cannon"))
+	return ncSg
+end
+
+
+
+-- 获取本地玩家的对手
+function Battle_GetLocalPlayerEnemy()
+	local localPlayerId = localPlayer.id
+	return Battle_GetEnemy(localPlayer.id)	
+end
+
+
+function Battle_GetEnemy(playerId)
+	local enemies = {}
+	for _, players in pairs(_current_battles) do 
+		for _, player in pairs(players) do 
+			if player.id == playerId then 
+				for _, p in pairs(players) do 
+					if p.id ~= playerId then 
+						return p
+					end
+				end
+			end
+		end
+	end
+	return nil	
+end
+
+-- 获取玩家单位的总健康值
+function Battle_GetPlayerSgHealth(playerId)
+	local sg = Player_GetSquads(playerId)
+	local count = SGroup_CountSpawned(sg)
+	local health = 0
+	if count > 0 then 
+		for i = 1, count do 
+			local s = SGroup_GetSpawnedSquadAt(sg, i)
+			if s ~= nil then 
+				health = health + Squad_GetHealth(s)
+			end
+		end
+	end
+	
+	return health
+end
+
+
+-- 获取玩家单位的总价值
+function Battle_GetPlayerSgPrice(playerId)
+	local sg = Player_GetSquads(playerId)
+	local count = SGroup_CountSpawned(sg)
+	local price = 0
+	if count > 0 then 
+		for i = 1, count do 
+			local s = SGroup_GetSpawnedSquadAt(sg, i)
+			if s ~= nil then 
+				local bp = Squad_GetBlueprint(s)
+				local bpName = BP_GetName(bp)
+				local race = Util_GetRaceBySBP(bpName)
+				if race ~= nil then 
+					local unitPrice = Util_GetSquadsPrice(race, bpName)
+					if race == RACE_DRAGON then 
+						unitPrice = math.floor(unitPrice * 0.8)
+					end
+					price = price + unitPrice
+				end
+			end
+		end
+	end
+	
+	return price
+end
+
+
+function Battle_GetCurrentBattles()
+	return _current_battles
+end
+
+function Battle_OnCombatEnd()
+	local worldSg = SGroup_CreateIfNotFound("testworldSg")
+	SGroup_Clear(worldSg)
+	World_GetAllSquadsOfType(worldSg, "military")
+	SGroup_DestroyAllSquads(worldSg)
+	World_GetAllSquadsOfType(worldSg, "worker")
+	SGroup_DestroyAllSquads(worldSg)
+	World_GetAllSquadsOfType(worldSg, "monk")
+	SGroup_DestroyAllSquads(worldSg)
+	for i, player in pairs(PLAYERS) do 
+		SGroup_DestroyAllSquads(Player_GetSquads(player.id))
+	end
+end
