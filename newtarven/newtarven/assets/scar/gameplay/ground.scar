@@ -87,13 +87,7 @@ function Ground_GetSpawnPos(groundIdx)
 	return {_ground[groundIdx].pos1, _ground[groundIdx].pos2}
 end
 
-function Ground_GetDefendSpawnPos(groundIdx)
-		if #_ground == 0 then 
-		Rule_AddInterval(Ground_Warning, 1)
-		return 
-	end
-	return _ground[groundIdx].center
-end
+
 function Ground_GetRadius()
 	return _radius
 end

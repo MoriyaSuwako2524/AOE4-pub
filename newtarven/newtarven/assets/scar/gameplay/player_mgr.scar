@@ -21,12 +21,14 @@ function PlayerMgr_OnInit()
 		player.streamerId = 0
 		player.streamerName = ""
 		player.StreamerPlatform = ""
-		player.TcCurrent = 1
-		player.TowerCurrent = 0
-		player.CalsCurrent = 0
+		player.TcCurrentGroup = {} 
+		PlayerMgr_InitMainTc(player.id)
+		player.TowerCurrent = {}
+		player.CalsCurrent = {}
 		player.TcAva = 3
 		player.CalsAva = 3
 		player.TowerAva= 5
+		player.isdefeated = false
 	end
 	
 	Network_RegisterEvent("PlayerMgr_UpdateStreamerNtw")
@@ -38,7 +40,7 @@ function PlayerMgr_OnRoundStart()
 	local food = 0
 	local heal = 0
 	for i, player in pairs(PLAYERS) do
-		heal = player.TcCurrent * 10
+		heal = #player.TcCurrentGroup * 10
 		player.health = player.health + heal
 		if player.health > player.healthlimit then
 			player.health = 100
@@ -340,6 +342,7 @@ function PlayerMgr_SetIsStreamer(player, streamer)
 end
 
 
+
 function PlayerMgr_UpdateStreamerNtw(playerId, streamer)
 	local player = Core_GetPlayersTableEntry(playerId)
 	if not player.isStreamer then 
@@ -349,4 +352,20 @@ function PlayerMgr_UpdateStreamerNtw(playerId, streamer)
 		player.StreamerPlatform = streamer.platform
 	end
 end
+
+function PlayerMgr_InitMainTc(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	local playerRace = Player_GetRaceName(playerId)
+	local EntityType = "maintc"
+	player.TcCurrentGroup.maintc =  SquadCards_GetEntitiesBpByRaceAndType(playerRace,EntityType)
+	player.TcCurrentGroup.sidetc_1 = nil
+	player.TcCurrentGroup.sidetc_2 = nil
+end
+
+function PlayerMgr_GetOwnedTcByIdx(playerId,EntitiyIdx)
+	local player = Core_GetPlayersTableEntry(playerId)
+	return player.TcCurrentGroup[EntitiyIdx]
+end
+
+
 

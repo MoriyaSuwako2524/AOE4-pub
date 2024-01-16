@@ -2108,6 +2108,12 @@ function SquadCards_GetGrowUpCount(bpName, level, count)
 	end
 end
 
+--This function should use alias race name, e.g. english; and entitytype including tc, tower and keep. the _entities derivates from common_util.scar
+function SquadCards_GetEntitiesBpByRaceAndType(race,entitytype)
+	local entities = Util_GetAllEntities()
+	return entities[race][entitytype]
+end
+
 function SquadCards_GetBasicCount(bpName, level, count)
 	local funcs = check_bp_add[bpName]
 	if funcs ~= nil and funcs.GetBasicCount ~= nil then 

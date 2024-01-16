@@ -1,0 +1,371 @@
+-- 玩家基础资料管理
+
+import("util/common_header.scar")
+
+Core_RegisterModule("PlayerMgr")
+
+
+function PlayerMgr_OnInit()
+	for i, player in pairs(PLAYERS) do 
+		Player_SetResource(player.id, RT_Food, 1)
+		Player_SetResource(player.id, RT_Gold, 0)
+		Player_SetResource(player.id, RT_Stone, 0)
+		Player_SetResource(player.id, RT_Wood, 0)
+		player.level = 1
+		player.healthlimit = 100
+		player.health = 30
+		Player_SetCurrentAge(player.id, AGE_DARK)
+		player.levelUpRound = 1
+		player.diedHealth = 999
+		player.isStreamer = false
+		player.streamerId = 0
+		player.streamerName = ""
+		player.StreamerPlatform = ""
+		player.TcCurrentGroup = {} 
+		PlayerMgr_InitMainTc(player.id)
+		player.TowerCurrent = {}
+		player.CalsCurrent = {}
+		player.TcAva = 3
+		player.CalsAva = 3
+		player.TowerAva= 5
+		player.isdefeated = false
+	end
+	
+	Network_RegisterEvent("PlayerMgr_UpdateStreamerNtw")
+end 
+
+-- 轮次开始时
+function PlayerMgr_OnRoundStart()
+	local round = ConfigUtil_GetCurrentRound()
+	local food = 0
+	local heal = 0
+	for i, player in pairs(PLAYERS) do
+		heal = #player.TcCurrentGroup * 10
+		player.health = player.health + heal
+		if player.health > player.healthlimit then
+			player.health = 100
+		end
+		food = math.ceil(player.health/10)
+		Player_SetResource(player.id, RT_Food, food)
+		local gold = Player_GetResource(player.id, RT_Gold)
+		Player_SetResource(player.id, RT_Gold, gold + 1)
+		PlayerMgr_AutoLevelUp(player.id)
+		player.roundEnd = false
+		
+		if ConfigUtil_IsTestMode() then 
+			Player_SetResource(player.id, RT_Food, 1000)
+			Player_SetResource(player.id, RT_Gold, 1000)
+		end
+	end
+
+end
+
+function PlayerMgr_AddHealth(playerId, health)
+	local player = Core_GetPlayersTableEntry(playerId)
+	--if player.roundEnd then 
+	--	return 
+	--end
+	player.health = player.health + health
+	if player.health > 100 then 
+		player.health = 100
+	end
+	--player.roundEnd = true
+end
+
+-- 扣减健康值
+function PlayerMgr_DeduceHealth(playerId, deduceHealth)
+	if deduceHealth == nil then 
+		deduceHealth = 0
+	end
+	local player = Core_GetPlayersTableEntry(playerId)
+	player.isWin = false
+	local enemy = Battle_GetEnemy(playerId)
+	if localPlayer.id == playerId then 
+		UI_CreateEventCue(Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:126", deduceHealth), nil, "", "", "sfx_ui_event_queue_high_priority_play")
+	elseif enemy.id == localPlayer.id then
+		UI_CreateEventCue(Loc_FormatText("$aa0406c7490b4889acebb0e09301e10f:127", deduceHealth), nil, "", "", "sfx_ui_event_queue_high_priority_play")
+	end
+	
+	if player.health - deduceHealth <= 0 then 
+		player.diedHealth = player.health
+	end
+	player.health = player.health - deduceHealth
+	
+	if player.health <= 0 then 
+		Core_SetPlayerDefeated(player.id, Annihilation_LoserPresentation, WR_ANNIHILATION)
+		--[[
+		local squadCards = PlayerCard_GetSquadCards(player.id)
+		if squadCards ~= nil and #squadCards > 0 then 
+			for _, squadCard in pairs(squadCards) do 
+				if squadCard.card ~= nil then 
+					SquadCards_DecreaPickedCard(squadCard.card)
+				end
+			end
+		end
+		
+		squadCards = PlayerCard_GetTempAreaSquadCards(player.id)
+		if squadCards ~= nil and #squadCards > 0 then 
+			for _, squadCard in pairs(squadCards) do 
+				if squadCard.card ~= nil then 
+					SquadCards_DecreaPickedCard(squadCard.card)
+				end
+			end
+		end
+		--]]
+	end
+	--player.roundEnd = true
+end
+
+-- 获取玩家的健康值
+function PlayerMgr_GetHealth(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	return player.health
+end
+
+-- 获取玩家等级
+function PlayerMgr_GetLevel(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	return player.level
+end
+
+-- 玩家升级
+function PlayerMgr_LevelUp(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	if player.level < 6 then 
+		player.level = player.level + 1
+		if player.level == 3 then 
+			Player_SetCurrentAge(playerId, AGE_CASTLE)
+		elseif player.level == 5 then 
+			Player_SetCurrentAge(playerId, AGE_IMPERIAL)
+		end	
+		Core_CallDelegateFunctions("OnLevelUp", playerId)
+		player.levelUpRound = ConfigUtil_GetCurrentRound()
+	end
+end
+
+-- 获取应该部署的位置
+function PlayerMgr_GetSpawnPos(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	if player.hadEnemy  then 
+		--print("......hadEnemy...........")
+		return player.spawnPos
+	else
+		--print("......not hadEnemy...........")
+		return nil
+	end
+end
+
+
+-- 增加食物
+function PlayerMgr_AddFood(playerId, amount)
+	Player_AddResource(playerId, RT_Food, amount)
+end
+
+-- 设置食物数量
+function PlayerMgr_SetFood(playerId, amount) 
+	Player_SetResource(playerId, RT_Food, amount)
+end
+
+-- 获取当前的食物数
+function PlayerMgr_GetFood(playerId)
+	return Player_GetResource(playerId, RT_Food)
+end
+
+-- 增加黄金
+function PlayerMgr_AddGold(playerId, amount)
+	Player_AddResource(playerId, RT_Gold, amount)
+end
+
+-- 设置黄金数量
+function PlayerMgr_SetGold(playerId, amount) 
+	Player_SetResource(playerId, RT_Gold, amount)
+end
+
+-- 获取当前的黄金数
+function PlayerMgr_GetGold(playerId)
+	return Player_GetResource(playerId, RT_Gold)
+end
+
+-- 获取升级所需消耗
+function PlayerMgr_GetLevelupCost(playerId)
+	local levelupGolds = ConfigUtil_GetLevelupGolds()
+	local level = PlayerMgr_GetLevel(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	if level < 6 then
+		local cost = levelupGolds[level] - ConfigUtil_GetCurrentRound() + player.levelUpRound
+		if cost >= 0 then 
+			return cost 
+		else 
+			return 0
+		end
+	else 
+		return 0
+	end
+end
+
+-- 如果满足轮次了就自动升级
+function PlayerMgr_AutoLevelUp(playerId)
+	if PlayerMgr_GetLevelupCost(playerId) == 0 then 
+		-- PlayerMgr_LevelUp(playerId)
+	end
+end
+
+
+function PlayerMgr_GetEnemy(playerId) 
+	local player = Core_GetPlayersTableEntry(playerId)
+	if player.hadEnemy  then 
+		return player.enemy
+	else
+		return nil 
+	end
+end
+
+-- 设置最近一轮扣减得健康值
+function PlayerMgr_SetRoundDeduceHealth(playerId, deduceHealth)
+	local player = Core_GetPlayersTableEntry(playerId)
+	player.roundDeduceHealth = deduceHealth
+end
+
+-- 获取最近一轮扣减得健康值
+function PlayerMgr_GetRoundDeduceHealth(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	return player.roundDeduceHealth
+end
+
+function PlayerMgr_GetRefreshSquadCardsCount(playerId)
+	return 3 + math.floor(PlayerMgr_GetLevel(playerId)/2)
+end
+
+-- 选中的民族
+function PlayerMgr_GetPickedRaces(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	if Misc_IsDevMode() then 
+		--return {Player_GetRaceName(playerId)}
+	end
+	
+	if player.pickedRaces == nil or #player.pickedRaces == 0 then 
+		return Util_GetRaces()
+	else
+		return player.pickedRaces
+	end
+end
+
+
+function PlayerMgr_GetSGroupBySpawnPos(playerId, posIdx)
+	local player = Core_GetPlayersTableEntry(playerId)
+	if player.spawnedSg["sg" ..  posIdx] == nil then 
+		player.spawnedSg["sg" ..  posIdx] = SGroup_CreateIfNotFound(string.format("posSg_%s_%s", Player_GetID(player.id), posIdx))
+	end
+	return player.spawnedSg["sg" ..  posIdx]
+end
+
+function PlayerMgr_GetSGroupBySpawnPosNew(playerId, posIdx)
+	local player = Core_GetPlayersTableEntry(playerId)
+	return player.spawnedSg["sg" ..  posIdx]
+end
+
+function PlayerMgr_GetSGroupOfVillager(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+		if player.VillagerSg == nil then 
+		player.VillagerSg = SGroup_CreateIfNotFound(string.format("VilSg_%s_", Player_GetID(player.id)))
+	end
+	return player.VillagerSg
+end
+
+function PlayerMgr_GetNcSg(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	local sg = SGroup_CreateIfNotFound(string.format("ncSg_%s", Player_GetID(player.id)))
+	player.ncSg = sg
+	return sg
+end
+
+function PlayerMgr_GetSg(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	local sg = SGroup_CreateIfNotFound(string.format("mySg_%s", Player_GetID(player.id)))
+	player.sg = sg
+	return sg
+end
+
+
+function PlayerMgr_ForeachSPawnPosSG(playerId, func)
+	
+end
+
+function PlayerMgr_SetHadSameCardRound(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	player.hadSameCardRound = ConfigUtil_GetCurrentRound()
+end
+
+function PlayerMgr_GetHadSameCardRound(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	if player.hadSameCardRound == nil then 
+		return 1
+	end
+	return player.hadSameCardRound
+end
+
+
+function PlayerMgr_ResetDeploySquadsData(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	player.deploySquadsData = {}
+end
+
+-- 通过单位id来获取单位所在的卡牌索引
+function PlayerMgr_GetCardIdxBySquadId(playerId, sid)
+	local player = Core_GetPlayersTableEntry(playerId)
+	local cardPos = player.deploySquadsData[sid]
+	return cardPos
+end
+
+
+function PlayerMgr_UpdateDeploySquadsData(playerId, areaType, cardIdx)
+	local player = Core_GetPlayersTableEntry(playerId)
+	local cardPos = {
+			areaType = areaType,
+			cardIdx = cardIdx,
+		}
+	local addFunc = function(gid, idx, sid)
+		player.deploySquadsData[Squad_GetID(sid)] = cardPos
+	end
+	local squadCard = PlayerCard_GetSquadCardByAreaType(playerId, areaType, cardIdx) 
+	local sg = PlayerCard_GetSG(squadCard)
+	if sg ~= nil and SGroup_Count(sg) > 0 then 
+		SGroup_ForEach(sg, addFunc)
+	end
+end
+
+function PlayerMgr_SetIsStreamer(player, streamer)
+	-- 如果当前玩家不是streamer, 但是传过来的值是streamer，那就要设置成streamer.
+	if streamer ~= nil and not player.isStreamer then 
+		Network_CallEvent("PlayerMgr_UpdateStreamerNtw", streamer)
+	end
+end
+
+
+
+function PlayerMgr_UpdateStreamerNtw(playerId, streamer)
+	local player = Core_GetPlayersTableEntry(playerId)
+	if not player.isStreamer then 
+		player.isStreamer = true
+		player.streamerId = streamer.uid
+		player.streamerName = streamer.uname
+		player.StreamerPlatform = streamer.platform
+	end
+end
+
+function PlayerMgr_InitMainTc(playerId)
+	local player = Core_GetPlayersTableEntry(playerId)
+	local playerRace = Player_GetRaceName(playerId)
+	local EntityType = "maintc"
+	player.TcCurrentGroup.maintc =  SquadCards_GetEntitiesBpByRaceAndType(playerRace,EntityType)
+	player.TcCurrentGroup.sidetc_1 = nil
+	player.TcCurrentGroup.sidetc_2 = nil
+end
+
+function PlayerMgr_GetOwnedTcByIdx(playerId,EntitiyIdx)
+	local player = Core_GetPlayersTableEntry(playerId)
+	return player.TcCurrentGroup[EntitiyIdx]
+end
+
+
+

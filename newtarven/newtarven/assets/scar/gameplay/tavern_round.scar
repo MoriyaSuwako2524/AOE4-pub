@@ -111,17 +111,47 @@ end
 function TavernRound_CombatEnd()
 	Core_CallDelegateFunctions("OnCombatEnd") 
 	Timer_End(_battle_timer)
-	TavernRound_RoundStart()
+	TavernRound_SessionDeployStart()
+end
+
+-- 小场次部署开始
+function TavernRound_SessionDeployStart()
+	print("TavernRound_SessionDeployStart")
+	if _deploymentStart then 
+		Core_CallDelegateFunctions("OnSessionDeployStart")
+		TavernRound_SessionDeployEnd()
+	end
+
+end
+
+-- 小场次部署结束
+function TavernRound_SessionDeployEnd()
+	Core_CallDelegateFunctions("OnSessionDeployEnd")
+	Rule_AddOneShot(TavernRound_SessionCombatStart, 5)
+
 end
 
 -- 小场次战斗开始
 function TavernRound_SessionCombatStart()
-	
-	Core_CallDelegateFunctions("OnSessionCombatStart")
+	if Misc_IsDevMode() then 
+		--Timer_Start(_battle_timer, 30)
+	else 
+		
+	end
+	if ConfigUtil_IsTestMode() then 
+		Timer_Start(_battle_timer, 90 + (ConfigUtil_GetCurrentRound() - 1))
+		--Timer_Start(_battle_timer, 5)
+	else 
+		Timer_Start(_battle_timer, 90 + (ConfigUtil_GetCurrentRound() - 1))
+	end
+
 end
 
 -- 小场次战斗结束
 function TavernRound_SessionCombatEnd()
 	
 	Core_CallDelegateFunctions("OnSessionCombatEnd")
+	Timer_End(_battle_timer)
+	TavernRound_RoundStart()
 end
+
